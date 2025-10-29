@@ -1,12 +1,76 @@
 .taskCard {
+  position: relative; /* Necessário para o botão absoluto */
   background-color: #333;
-  padding: 1rem;
+  padding: 0.75rem 1rem; /* Ajuste no padding */
   border-radius: 8px;
   border: 1px solid #444;
-  margin-bottom: 0.5rem; /* Espaço entre os cartões */
+  /* Adiciona um cursor padrão para indicar interatividade */
+  cursor: grab; 
+}
+.taskCard:active {
+  cursor: grabbing; /* Feedback visual ao arrastar */
 }
 
-.taskCard p {
-  font-size: 0.9rem;
+.taskCardDragging {
+  /* Placeholder do cartão original */
+  opacity: 0.4;
+  background-color: #1a1b1d; /* Cor do fundo da coluna */
+  border: 2px dashed #444; 
+  border-radius: 8px;
+  height: 48px; /* Altura aproximada de um cartão */
+  margin-bottom: 0.5rem;
+  box-sizing: border-box; /* Garante que padding/border não aumentem a altura */
+}
+
+.taskContent {
+  /* Garante que o parágrafo ocupe espaço para o double-click */
+  width: calc(100% - 24px); /* Subtrai espaço para o botão 'X' */
+  min-height: 20px;
+  /* Evita seleção de texto ao arrastar */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.taskInput {
+  width: calc(100% - 24px); /* Subtrai espaço para o botão 'X' */
+  padding: 0.5rem;
+  border: 1px solid #007bff; /* Borda azul para destacar */
+  border-radius: 4px;
+  background-color: #3f3f3f; /* Um pouco mais claro para diferenciar */
   color: #E9ECEF;
+  outline: none;
+  font-family: inherit; /* Usa a mesma fonte do resto */
+  font-size: 0.9rem; /* Tamanho similar ao <p> */
+  box-sizing: border-box; /* Garante padding correto */
+}
+
+/* Estilo para o botão de deletar tarefa ('X') */
+.deleteTaskButton {
+  position: absolute;
+  top: 50%; 
+  right: 4px; 
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #666; /* Cor sutil */
+  font-size: 1.2rem;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 5px; /* Ajuste no padding */
+  border-radius: 4px;
+  opacity: 0; /* Escondido por padrão */
+  transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Mostra o botão quando o mouse está sobre o card */
+.taskCard:hover .deleteTaskButton {
+  opacity: 1;
+}
+
+.deleteTaskButton:hover {
+  color: #ff4d4d; /* Cor vermelha no hover */
+  background-color: rgba(255, 77, 77, 0.1); /* Fundo sutil vermelho */
 }

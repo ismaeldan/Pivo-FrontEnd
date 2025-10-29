@@ -1,5 +1,6 @@
 .boardContainer {
-  /* O padding já vem do layout, mas podemos adicionar mais */
+  /* O padding pode vir do layout, mas garantimos aqui */
+  padding: 1rem;
 }
 
 .boardTitle {
@@ -9,11 +10,101 @@
 }
 
 .columnsWrapper {
-  /* Aqui usaremos flex ou grid para as colunas */
+  /* --- ESTA É A CORREÇÃO PRINCIPAL --- */
+
+  /* 1. Define o layout como flexível */
   display: flex;
+
+  /* 2. Garante que a direção seja horizontal (lado a lado) */
+  flex-direction: row;
+
+  /* 3. Permite rolagem horizontal se as colunas estourarem a tela */
+  overflow-x: auto;
+  overflow-y: hidden; /* Evita rolagem vertical desnecessária no wrapper */
+
+  /* 4. Alinha as colunas no topo */
+  align-items: flex-start;
+
+  /* 5. Dá um espaçamento entre as colunas */
   gap: 1rem;
-  min-height: 60vh;
-  background-color: #2a2b2d;
+
+  /* 6. Define a aparência e a altura mínima do wrapper */
+  min-height: 70vh; /* Garante que o wrapper tenha altura */
   padding: 1rem;
+  background-color: #2a2b2d;
   border-radius: 8px;
+}
+
+.addNewColumnButton {
+  /* 7. Garante que o botão não seja "esmagado" pelo flex */
+  flex-shrink: 0;
+
+  min-width: 280px;
+  height: 50px;
+  border-radius: 8px;
+  background-color: #2a2b2d;
+  border: 2px dashed #555;
+  color: #999;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.addNewColumnButton:hover {
+  background-color: #333;
+  color: #E9ECEF;
+  border-color: #777;
+}
+
+/* ... (estilos existentes) ... */
+
+/* Estilos para o conteúdo do Modal de Confirmação */
+.confirmationContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: #E9ECEF;
+}
+
+.confirmationContent strong {
+  color: #ffcc80; /* Cor para destacar o nome */
+}
+
+.warningText {
+  font-size: 0.9rem;
+  color: #ffab91; /* Cor de aviso */
+}
+
+.confirmationButtons {
+  display: flex;
+  justify-content: flex-end; /* Alinha botões à direita */
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.cancelButton { /* Reutilizando estilo do form */
+  border: none;
+  background-color: #444;
+  color: #ccc;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cancelButton:hover {
+  background-color: #555;
+  color: white;
+}
+
+.confirmDeleteButton {
+  border: none;
+  background-color: #ff4d4d; /* Vermelho */
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.confirmDeleteButton:hover {
+  background-color: #e53935; /* Vermelho mais escuro */
 }

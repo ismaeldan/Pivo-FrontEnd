@@ -1,0 +1,47 @@
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.textArea {
+  width: 100%;
+  min-height: 80px;
+  padding: 0.5rem;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  background-color: #333;
+  color: #E9ECEF;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.saveButton {
+  flex-grow: 1;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancelButton {
+  border: none;
+  background-color: transparent;
+  color: #999;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancelButton:hover {
+  background-color: #333;
+}

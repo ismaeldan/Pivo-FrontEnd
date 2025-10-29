@@ -1,25 +1,132 @@
 .column {
-  /* As colunas ficarão dentro de um flexbox no BoardArea */
-  flex: 1; /* Faz as colunas dividirem o espaço */
-  min-width: 280px;
-  background-color: #1A1B1D; /* Um pouco mais escuro que o fundo */
+  /* Layout e Tamanho */
+  flex: 1; 
+  flex-basis: 300px; 
+  min-width: 300px; 
+  max-width: 320px; 
+  
+  /* Estrutura Flex Interna (Empilhar verticalmente) */
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* Espaço entre título, container e botão */
+
+  /* Estilo */
+  background-color: #1A1B1D; 
   border-radius: 8px;
   padding: 1rem;
   
-  /* Para a coluna crescer se tiver muitas tarefas */
-  display: flex;
-  flex-direction: column;
+  /* Para a coluna não esticar verticalmente com a tela */
+  height: fit-content; 
 }
 
+.columnOver {
+  /* Estilo quando uma tarefa está sendo arrastada por cima */
+  background-color: #2a2b2d; 
+  border: 2px dashed #007bff; 
+}
+
+.columnDraggingPlaceholder {
+  /* Placeholder da coluna (quando a coluna inteira está sendo arrastada) */
+  flex-basis: 300px;
+  min-width: 300px;
+  border-radius: 8px;
+  background-color: #1a1b1d;
+  opacity: 0.5;
+  border: 2px dashed #444;
+}
+
+/* Container para o título e botão de deletar */
+.columnHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* Espaço adicionado abaixo do header */
+  margin-bottom: 0.5rem; 
+}
+
+/* Ajuste no título */
 .columnTitle {
   font-size: 1.2rem;
   font-weight: bold;
-  margin-bottom: 1rem;
   color: #E9ECEF;
+  padding: 0.5rem; /* Mantém um padding para área clicável */
+  border-radius: 4px;
+  flex-grow: 1; /* Ocupa espaço disponível */
+  cursor: grab; 
+  /* Evita seleção de texto ao arrastar */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+.columnTitle:hover {
+  background-color: #2a2b2d; /* Feedback sutil no hover */
+}
+.columnTitle:active {
+  cursor: grabbing;
 }
 
+.columnTitleInput {
+  width: calc(100% - 30px); /* Deixa espaço para o botão que some */
+  padding: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  background-color: #333;
+  color: #E9ECEF;
+  outline: none;
+}
+
+/* Botão de deletar coluna */
+.deleteColumnButton {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 1.5rem; /* Aumenta o 'X' */
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 8px; /* Padding horizontal */
+  border-radius: 4px;
+  line-height: 1;
+  opacity: 0; /* Começa invisível */
+  transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Mostra o botão quando o mouse está sobre a coluna */
+.column:hover .deleteColumnButton {
+  opacity: 1;
+}
+
+.deleteColumnButton:hover {
+  color: #ff4d4d; /* Vermelho */
+  background-color: rgba(255, 77, 77, 0.1); /* Fundo sutil */
+}
+
+
 .tasksContainer {
-  /* Área onde os cartões ficarão */
-  flex-grow: 1;
-  min-height: 100px; /* Altura mínima para a área de drop */
+  /* Onde as tarefas ficam */
+  flex-grow: 1;      
+  min-height: 50px; /* Reduzido um pouco, mas ainda presente */
+  
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Espaço entre os cartões */
+}
+
+.addNewTaskButton {
+  border: none;
+  background-color: #2a2b2d;
+  color: #999;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-top: 0.5rem; /* Espaço acima do botão */
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.addNewTaskButton:hover {
+  background-color: #333;
+  color: #E9ECEF;
 }
