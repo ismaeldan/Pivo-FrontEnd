@@ -36,3 +36,11 @@
   font-weight: bold;
   cursor: pointer;
 }
+
+.logo {
+  margin-bottom: 1.5rem;
+}
+
+.p{
+  margin: 1rem;
+}
