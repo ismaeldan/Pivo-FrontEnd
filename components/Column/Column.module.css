@@ -1,0 +1,25 @@
+.column {
+  /* As colunas ficarão dentro de um flexbox no BoardArea */
+  flex: 1; /* Faz as colunas dividirem o espaço */
+  min-width: 280px;
+  background-color: #1A1B1D; /* Um pouco mais escuro que o fundo */
+  border-radius: 8px;
+  padding: 1rem;
+  
+  /* Para a coluna crescer se tiver muitas tarefas */
+  display: flex;
+  flex-direction: column;
+}
+
+.columnTitle {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #E9ECEF;
+}
+
+.tasksContainer {
+  /* Área onde os cartões ficarão */
+  flex-grow: 1;
+  min-height: 100px; /* Altura mínima para a área de drop */
+}
