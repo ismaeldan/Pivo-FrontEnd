@@ -1,0 +1,12 @@
+.appContainer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Poderíamos usar 'display: grid' aqui também, 
+     mas flex é simples para começar com Header + Conteúdo */
+}
+
+.mainContent {
+  flex-grow: 1; /* Faz o conteúdo principal ocupar o espaço restante */
+  padding: 1rem;
+}

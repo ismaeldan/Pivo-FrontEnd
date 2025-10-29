@@ -1,0 +1,19 @@
+.boardContainer {
+  /* O padding já vem do layout, mas podemos adicionar mais */
+}
+
+.boardTitle {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+}
+
+.columnsWrapper {
+  /* Aqui usaremos flex ou grid para as colunas */
+  display: flex;
+  gap: 1rem;
+  min-height: 60vh;
+  background-color: #2a2b2d;
+  padding: 1rem;
+  border-radius: 8px;
+}

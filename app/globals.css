@@ -1,1 +1,21 @@
-@import "tailwindcss"
+/* ============== RESET ============== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --title-color: #E9ECEF;
+  --background-page-dark: #1E1F21;
+}
+
+ul {
+  list-style: none;
+}
+
+body {
+  background-color: var(--background-page-dark);
+  color: var(--title-color);
+  font-family: var(--font-geist-sans), sans-serif
+}
