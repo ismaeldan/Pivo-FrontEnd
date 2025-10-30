@@ -2,7 +2,7 @@
 
 import Column from '../Column/Column';
 import styles from './BoardArea.module.css';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react'; 
 import { Column as ColumnType, Task } from '@/types'; 
 import { 
   DndContext, 
@@ -12,240 +12,359 @@ import {
   PointerSensor, 
   useSensor, 
   useSensors,
-  DragOverEvent // Mantemos o import caso queira reativar onDragOver depois
+  DragOverEvent 
 } from '@dnd-kit/core';
-import { mockColumns } from '@/data/mock-data'; // Dados iniciais
 import TaskCard from '../TaskCard/TaskCard';
 import { 
   arrayMove, 
   SortableContext, 
   horizontalListSortingStrategy 
 } from '@dnd-kit/sortable';
-
-// Importa os componentes do Modal e Formulários
 import Modal from '../Modal/Modal';
 import AddColumnForm from '../AddColumnForm/AddColumnForm';
 import AddTaskForm from '../AddTaskForm/AddTaskForm';
+import { useBoard } from '@/hooks/useBoard';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/apiClient';
 
-// Define os tipos de modal que podem estar abertos
+// --- Tipos para os Modais ---
 type ModalType = 
   | null
   | { type: 'addColumn' }
   | { type: 'addTask', columnId: string };
 
-  type ConfirmationModalData = 
+type ConfirmationModalData = 
   | null
-  | { type: 'task', id: string, name: string } // Adicionamos 'name' para exibir no modal
-  | { type: 'column', id: string, name: string };
+  | { type: 'task', id: string, name: string }
+  | { type: 'column', id: string, name: string }; 
+// --- Fim dos Tipos ---
+
+
+// --- Definições de Payload da API ---
+interface CreateTaskPayload {
+  title: string;
+  columnId: string;
+}
+
+interface CreateTaskResponse extends Task {}
+
+interface UpdateTaskPayload {
+  taskId: string;
+  data: {
+    order?: number;
+    columnId?: string;
+    title?: string; // (Permite update de DND e Título)
+  }
+}
+
+// (Nova) Payload para atualizar coluna
+interface UpdateColumnPayload {
+  columnId: string;
+  data: {
+    title?: string;
+    order?: number;
+  }
+}
+// --- Fim dos Payloads ---
+
+
+// --- Funções da API (Definidas fora do componente) ---
+
+// POST /tasks
+const createTaskOnAPI = async (payload: CreateTaskPayload): Promise<CreateTaskResponse> => {
+  const response = await apiClient('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error('Falha ao criar a tarefa');
+  return response.json();
+};
+
+// PATCH /tasks/:taskId
+const updateTaskOnAPI = async ({ taskId, data }: UpdateTaskPayload) => {
+  const response = await apiClient(`/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Falha ao atualizar a tarefa');
+  return response.json();
+};
+
+// (NOVO) DELETE /tasks/:taskId
+const deleteTaskOnAPI = async (taskId: string) => {
+  const response = await apiClient(`/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error('Falha ao deletar a tarefa');
+  }
+  return { success: true };
+};
+
+// (NOVO) POST /columns
+const createColumnOnAPI = async (payload: { title: string }) => {
+  const response = await apiClient('/columns', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error('Falha ao criar a coluna');
+  return response.json();
+};
+
+// (NOVO) PATCH /columns/:columnId
+const updateColumnTitleOnAPI = async ({ columnId, data }: UpdateColumnPayload) => {
+  const response = await apiClient(`/columns/${columnId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Falha ao atualizar o título da coluna');
+  return response.json();
+};
+
+// (NOVO) DELETE /columns/:columnId
+const deleteColumnOnAPI = async (columnId: string) => {
+  const response = await apiClient(`/columns/${columnId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error('Falha ao deletar a coluna');
+  }
+  return { success: true };
+};
+// --- Fim das Funções da API ---
+
 
 export default function BoardArea() {
-  const [columns, setColumns] = useState<ColumnType[]>(mockColumns);
-  const [activeTask, setActiveTask] = useState<Task | null>(null); // Tarefa sendo arrastada
-  const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null); // Coluna sendo arrastada
-  const [activeModal, setActiveModal] = useState<ModalType>(null); // Qual modal está aberto
-  const [originalColumn, setOriginalColumn] = useState<ColumnType | null>(null); // Coluna original da tarefa (para reverter DND)
+  const [columns, setColumns] = useState<ColumnType[]>([]); 
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [originalColumn, setOriginalColumn] = useState<ColumnType | null>(null); 
   const [confirmationModalData, setConfirmationModalData] = useState<ConfirmationModalData>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  
+  const queryClient = useQueryClient();
 
-  // Memoiza os IDs das colunas para o SortableContext (otimização)
+  // --- Hooks do React Query ---
+
+  // Query para BUSCAR (GET /board)
+  const { 
+    data: columnsFromAPI, 
+    isLoading: isLoadingBoard,
+    isError: isErrorBoard 
+  } = useBoard();
+
+  // Sincroniza a API com o estado local
+  useEffect(() => {
+    if (columnsFromAPI) {
+      setColumns(columnsFromAPI); 
+    }
+  }, [columnsFromAPI]);
+
+  // Mutação para CRIAR TAREFA (POST /tasks)
+  const createTaskMutation = useMutation({
+    mutationFn: createTaskOnAPI,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+      closeModal(); 
+    },
+    onError: (error) => console.error("Erro ao criar tarefa:", error),
+  });
+
+  // Mutação para ATUALIZAR TAREFA (PATCH /tasks/:taskId) (Usada pelo DND e Edição)
+  const updateTaskMutation = useMutation({
+    mutationFn: updateTaskOnAPI,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar tarefa:", error);
+      queryClient.invalidateQueries({ queryKey: ['board'] }); // Reverte
+    }
+  });
+
+  // (NOVO) Mutação para CRIAR COLUNA (POST /columns)
+  const createColumnMutation = useMutation({
+    mutationFn: createColumnOnAPI,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+      closeModal();
+    },
+    onError: (error) => console.error("Erro ao criar coluna:", error),
+  });
+
+  // (NOVO) Mutação para ATUALIZAR COLUNA (PATCH /columns/:columnId)
+  const updateColumnMutation = useMutation({ // 1. Nome mudou
+    mutationFn: updateColumnTitleOnAPI, // 2. Função da API mudou
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar coluna:", error);
+      queryClient.invalidateQueries({ queryKey: ['board'] }); // Reverte
+    }
+  });
+
+  // (NOVO) Mutação para DELETAR TAREFA (DELETE /tasks/:taskId)
+  const deleteTaskMutation = useMutation({
+    mutationFn: deleteTaskOnAPI,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+    },
+    onError: (error) => {
+      console.error("Erro ao deletar tarefa:", error);
+      alert("Não foi possível deletar a tarefa.");
+    }
+  });
+
+  // (NOVO) Mutação para DELETAR COLUNA (DELETE /columns/:columnId)
+  const deleteColumnMutation = useMutation({
+    mutationFn: deleteColumnOnAPI,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+    },
+    onError: (error) => {
+      console.error("Erro ao deletar coluna:", error);
+      alert("Não foi possível deletar a coluna.");
+    }
+  });
+
+  // --- Fim dos Hooks ---
+
   const columnIds = useMemo(() => columns.map(col => col.id), [columns]);
-
-  // Configura os sensores de DND (mouse/touch)
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 10, // Exige mover 10px para iniciar o arraste
-      },
+      activationConstraint: { distance: 10 },
     })
   );
 
-  // --- FUNÇÕES DE CRUD ---
+  // --- FUNÇÕES DE CRUD (Conectadas às Mutações) ---
   
-  // Cria uma nova coluna (chamada pelo modal AddColumnForm)
+  // (Conectada)
   function handleCreateColumn(title: string, taskContents: string[]) {
-    const newColumnId = `col-${Date.now()}`; // ID único baseado no tempo
-    
-    // Cria os objetos Task a partir do array de strings
-    const newTasks: Task[] = taskContents.map((content, index) => {
-      const newTaskId = `task-${Date.now()}-${index}`; // ID único para a tarefa
-      return { id: newTaskId, content };
-    });
-
-    const newColumn: ColumnType = { 
-      id: newColumnId, 
-      title: title, 
-      tasks: newTasks 
-    };
-
-    setColumns([...columns, newColumn]); // Adiciona a nova coluna ao estado
-    setActiveModal(null); // Fecha o modal
+    // A API só aceita o título, então ignoramos 'taskContents'
+    createColumnMutation.mutate({ title: title });
   }
 
-  // Cria uma nova tarefa (chamada pelo modal AddTaskForm)
+  // (Conectada)
   function handleCreateTask(columnId: string, content: string) {
-    const newTaskId = `task-${Date.now()}`; // ID único baseado no tempo
-    const newTask: Task = { id: newTaskId, content: content };
-    
-    setColumns(prevColumns => {
-      return prevColumns.map(col => {
-        if (col.id === columnId) {
-          // Adiciona a nova tarefa ao final da coluna correta
-          return { ...col, tasks: [...col.tasks, newTask] };
-        }
-        return col;
-      });
-    });
-    setActiveModal(null); // Fecha o modal
-  }
-
-  // Atualiza o conteúdo de uma tarefa existente (chamada pelo TaskCard)
-  function updateTaskContent(taskId: string, newContent: string) {
-    setColumns(prevColumns => {
-      return prevColumns.map(col => ({
-        ...col,
-        tasks: col.tasks.map(task => {
-          if (task.id === taskId) {
-            return { ...task, content: newContent }; // Atualiza o conteúdo
-          }
-          return task;
-        })
-      }));
+    createTaskMutation.mutate({
+      title: content,
+      columnId: columnId,
     });
   }
 
-  // Atualiza o título de uma coluna existente (chamada pela Column)
+  // (Conectada)
+  function updateTaskTitle(taskId: string, newTitle: string) {
+    updateTaskMutation.mutate({
+      taskId: taskId,
+      data: { title: newTitle } // Envia o novo título para a API
+    });
+  }
+
+  // (Conectada)
   function updateColumnTitle(columnId: string, newTitle: string) {
-    setColumns(prevColumns => {
-      return prevColumns.map(col => {
-        if (col.id === columnId) {
-          return { ...col, title: newTitle }; // Atualiza o título
-        }
-        return col;
-      });
+    updateColumnMutation.mutate({
+      columnId: columnId,
+      data: { title: newTitle }
     });
   }
+
+  // (As funções 'deleteTask' e 'deleteColumn' não são mais necessárias aqui,
+  //  pois 'confirmDeletion' chama as mutações diretamente)
+
   
-  // Deleta uma tarefa (chamada pelo TaskCard)
-  function deleteTask(taskId: string) {
-    setColumns(prevColumns => 
-      prevColumns.map(col => ({
-        ...col,
-        tasks: col.tasks.filter(task => task.id !== taskId) 
-      }))
-    );
-  }
-
-  function deleteColumn(columnId: string) {
-    setColumns(prevColumns => 
-      prevColumns.filter(col => col.id !== columnId) 
-    );
-  }
-
   // --- FUNÇÕES DO DND-KIT ---
-
-  // Chamada quando o arraste começa
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
-    // Se for uma Tarefa
     if (active.data.current?.type === 'Task') {
       const task = active.data.current.task as Task;
       setActiveTask(task);
-      // Guarda a coluna original para possível reversão no onDragEnd
       setOriginalColumn(
         columns.find(col => col.tasks.some(t => t.id === task.id)) || null
       );
       return;
     }
-    // Se for uma Coluna
     if (active.data.current?.type === 'Column') {
       setActiveColumn(active.data.current.column as ColumnType);
       return;
     }
   }
 
-  // Chamada quando o arraste termina (o usuário solta o item)
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
-    // LÓGICA DE REVERSÃO: Se soltou fora de uma zona válida E era uma tarefa sendo arrastada
+    // LÓGICA DE REVERSÃO
     if (!over && activeTask && originalColumn) {
-      setColumns(prevColumns => {
-        // Encontra a coluna atual onde a tarefa pode ter parado (se onDragOver estivesse ativo)
-        const currentCol = prevColumns.find(col => 
-          col.tasks.some(task => task.id === active.id)
-        );
-        // Se já está na coluna original, não faz nada
-        if (currentCol?.id === originalColumn.id) return prevColumns;
-
-        // Remove da coluna atual (se existir)
-        let newColumns = prevColumns.map(col => {
-          if (col.id === currentCol?.id) {
-            return { ...col, tasks: col.tasks.filter(t => t.id !== active.id) };
-          }
-          return col;
-        });
-        // Adiciona de volta à coluna original
-        newColumns = newColumns.map(col => {
-          if (col.id === originalColumn.id) {
-             const existingTaskIndex = col.tasks.findIndex(t => t.id === activeTask.id);
-             // Prevenção extra para não duplicar se algo der errado
-             if(existingTaskIndex > -1) return col; 
-            // Adiciona ao final (poderia ser mais complexo para manter a ordem original)
-            return { ...col, tasks: [...col.tasks, activeTask] };
-          }
-          return col;
-        });
-        return newColumns;
-      });
-      // Limpa estados e finaliza a função
+      // (Esta é uma atualização local otimista que falhou, 
+      //  não precisa de chamada de API, mas o refetch do DND a corrigirá)
+      //  Para segurança, vamos forçar a invalidação
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+      
       setActiveTask(null);
       setActiveColumn(null);
       setOriginalColumn(null);
       return;
     }
     
-    // Limpa estados ativos após o arraste (mesmo se soltou no mesmo lugar ou drop inválido sobre algo)
     setActiveTask(null);
     setActiveColumn(null);
     setOriginalColumn(null);
     
-    if (!over) return; // Se soltou fora e não era tarefa, apenas ignora
-    if (active.id === over.id) return; // Soltou sobre si mesmo
+    if (!over) return; 
+    if (active.id === over.id) return;
 
-    // --- LÓGICA DE ARRASTAR COLUNA ---
+    // LÓGICA DE ARRASTAR COLUNA (Ainda local - podemos conectar à API depois)
     const isActiveColumn = active.data.current?.type === 'Column';
     if (isActiveColumn) {
-      setColumns(prevColumns => {
-        const activeColumnIndex = prevColumns.findIndex(col => col.id === active.id);
-        const overColumnIndex = prevColumns.findIndex(col => col.id === over.id);
-        // Segurança: verifica se os índices foram encontrados
-        if (activeColumnIndex === -1 || overColumnIndex === -1) return prevColumns;
-        // Usa 'arrayMove' do dnd-kit para reordenar o array de colunas
-        return arrayMove(prevColumns, activeColumnIndex, overColumnIndex);
-      });
-      return; // Finaliza a função após reordenar coluna
+      // Encontra os índices antes de atualizar o estado
+      const activeColumnIndex = columns.findIndex(col => col.id === active.id);
+      const overColumnIndex = columns.findIndex(col => col.id === over.id);
+
+      // Se os índices são válidos e diferentes
+      if (activeColumnIndex !== -1 && overColumnIndex !== -1 && activeColumnIndex !== overColumnIndex) {
+        
+        // 1. Atualização Otimista (move no estado local imediatamente)
+        setColumns(prevColumns => {
+          return arrayMove(prevColumns, activeColumnIndex, overColumnIndex);
+        });
+
+        // 2. Chama a Mutação para salvar a nova ordem no backend
+        updateColumnMutation.mutate({
+          columnId: active.id as string,
+          data: { order: overColumnIndex }
+        });
+      }
+      return; // Finaliza a função
     }
 
-    // --- LÓGICA DE ARRASTAR TAREFA ---
+    // LÓGICA DE ARRASTAR TAREFA (Conectada à API)
     const isActiveTask = active.data.current?.type === 'Task';
     if (isActiveTask) {
+      // Atualização otimista (muda o estado local primeiro)
       setColumns((prevColumns) => {
-        // Encontra a coluna de origem da tarefa
         const activeColumn = prevColumns.find(col => col.tasks.some(task => task.id === active.id));
-        if (!activeColumn) return prevColumns; // Segurança
-
-        // Encontra a coluna de destino (pode ser a coluna em si ou a coluna da tarefa sobre a qual soltou)
+        if (!activeColumn) return prevColumns;
         const overColumn = prevColumns.find(col => 
           col.id === over.id || col.tasks.some(task => task.id === over.id)
         );
-        if (!overColumn) return prevColumns; // Segurança
+        if (!overColumn) return prevColumns;
 
-        // CASO 1: REORDENAÇÃO (Soltou na mesma coluna)
+        // CASO 1: REORDENAÇÃO (Mesma Coluna)
         if (activeColumn.id === overColumn.id) {
           const activeIndex = activeColumn.tasks.findIndex(t => t.id === active.id);
           const overIndex = overColumn.tasks.findIndex(t => t.id === over.id);
-          if (activeIndex === -1 || overIndex === -1) return prevColumns; // Segurança
-          // Usa 'arrayMove' para reordenar o array de tarefas da coluna
+          if (activeIndex === -1 || overIndex === -1) return prevColumns;
+          
           const newTasks = arrayMove(activeColumn.tasks, activeIndex, overIndex);
+          const newOrder = overIndex; 
+
+          // Chama a mutação PATCH /tasks/:taskId
+          updateTaskMutation.mutate({
+            taskId: active.id as string,
+            data: { order: newOrder }
+          });
+          
           return prevColumns.map(col => {
             if (col.id === activeColumn.id) {
               return { ...col, tasks: newTasks };
@@ -254,165 +373,168 @@ export default function BoardArea() {
           });
         }
 
-        // CASO 2: MOVIMENTAÇÃO (Soltou em coluna diferente)
+        // CASO 2: MOVIMENTAÇÃO (Colunas Diferentes)
         const taskToMove = activeColumn.tasks.find(t => t.id === active.id);
-        if (!taskToMove) return prevColumns; // Segurança
+        if (!taskToMove) return prevColumns;
 
-        // Remove a tarefa da coluna de origem
         const newActiveColumnTasks = activeColumn.tasks.filter(t => t.id !== active.id);
-        // Encontra o índice onde soltou na coluna de destino
         const overIndex = overColumn.tasks.findIndex(t => t.id === over.id);
         const newOverColumnTasks = [...overColumn.tasks];
 
-        // Insere a tarefa na coluna de destino
-        if (overIndex === -1) { // Se soltou na coluna (não sobre uma tarefa específica)
-          newOverColumnTasks.push(taskToMove); // Adiciona no final
-        } else { // Se soltou sobre uma tarefa específica
-          newOverColumnTasks.splice(overIndex, 0, taskToMove); // Insere na posição
+        let newOrder: number;
+        if (overIndex === -1) { 
+          newOverColumnTasks.push(taskToMove);
+          newOrder = newOverColumnTasks.length - 1;
+        } else { 
+          newOverColumnTasks.splice(overIndex, 0, taskToMove);
+          newOrder = overIndex;
         }
         
-        // Atualiza o estado das duas colunas modificadas
+        // Chama a mutação PATCH /tasks/:taskId
+        updateTaskMutation.mutate({
+          taskId: taskToMove.id,
+          data: { 
+            columnId: overColumn.id, 
+            order: newOrder
+          }
+        });
+        
         return prevColumns.map(col => {
           if (col.id === activeColumn.id) {
-            return { ...col, tasks: newActiveColumnTasks }; // Coluna de origem sem a tarefa
+            return { ...col, tasks: newActiveColumnTasks };
           }
           if (col.id === overColumn.id) {
-            return { ...col, tasks: newOverColumnTasks }; // Coluna de destino com a tarefa
+            return { ...col, tasks: newOverColumnTasks };
           }
-          return col; // Outras colunas permanecem iguais
+          return col;
         });
       });
     }
   }
-  
-  // REMOVIDO/COMENTADO PARA EVITAR LOOP DE RENDERIZAÇÃO E BUG DE REVERSÃO
-  // A atualização visual agora só acontece no onDragEnd
-  // function handleDragOver(event: DragOverEvent) { /* ... */ }
 
   // --- FUNÇÕES DO MODAL ---
   const openAddColumnModal = () => setActiveModal({ type: 'addColumn' });
   const openAddTaskModal = (columnId: string) => setActiveModal({ type: 'addTask', columnId });
   const closeModal = () => setActiveModal(null);
 
-  // --- 3. NOVAS FUNÇÕES PARA O MODAL DE CONFIRMAÇÃO ---
-  
-  // Abre o modal de confirmação para deletar Tarefa
-  const requestDeleteTask = (task: Task) => {
-    setConfirmationModalData({ type: 'task', id: task.id, name: task.content });
+  const openEditModal = (task: Task) => {
+    setEditingTask(task); // Define a tarefa que o modal deve editar
   };
-  // Abre o modal de confirmação para deletar Coluna
+  const closeEditModal = () => {
+    setEditingTask(null); // Limpa a tarefa
+  };
+  
+  const requestDeleteTask = (task: Task) => {
+    setConfirmationModalData({ type: 'task', id: task.id, name: task.title });
+  };
   const requestDeleteColumn = (column: ColumnType) => {
     setConfirmationModalData({ type: 'column', id: column.id, name: column.title });
   };
-  // Fecha o modal de confirmação
   const cancelDeletion = () => {
     setConfirmationModalData(null);
   };
-  // Executa a deleção confirmada
+  
+  // (Conectado às mutações)
   const confirmDeletion = () => {
-    if (!confirmationModalData) return; // Segurança
+    if (!confirmationModalData) return; 
 
     if (confirmationModalData.type === 'task') {
-      deleteTask(confirmationModalData.id);
+      deleteTaskMutation.mutate(confirmationModalData.id);
     } else if (confirmationModalData.type === 'column') {
-      deleteColumn(confirmationModalData.id);
+      deleteColumnMutation.mutate(confirmationModalData.id);
     }
     
-    setConfirmationModalData(null); // Fecha o modal após deletar
+    setConfirmationModalData(null);
   };
 
   // --- RENDER ---
+
+  if (isLoadingBoard && columns.length === 0) {
+    return <div className={styles.boardLoading}>Carregando seu board...</div>;
+  }
+  if (isErrorBoard && columns.length === 0) {
+    return <div className={styles.boardError}>Houve um erro ao carregar o board.</div>;
+  }
+
   return (
     <DndContext 
       sensors={sensors} 
       onDragStart={handleDragStart} 
       onDragEnd={handleDragEnd}
-      // onDragOver={handleDragOver} // Removido
     >
       <div className={styles.boardContainer}>
         <h1 className={styles.boardTitle}>Meu Board</h1>
-        {/* Wrapper das Colunas com rolagem horizontal */}
+        
         <div className={styles.columnsWrapper}>
-          
-          {/* Contexto para reordenação HORIZONTAL das colunas */}
           <SortableContext 
             items={columnIds} 
             strategy={horizontalListSortingStrategy}
           >
-            {/* Mapeia e renderiza cada coluna */}
             {columns.map((column) => (
               <Column 
                 key={column.id} 
                 column={column} 
                 activeTask={activeTask} 
-                onAddTask={openAddTaskModal} // Passa função para abrir modal de tarefa
-                onUpdateTask={updateTaskContent} // Passa função de editar tarefa
-                onUpdateColumnTitle={updateColumnTitle} // Passa função de editar coluna
-                onRequestDeleteTask={requestDeleteTask} 
-                onRequestDeleteColumn={requestDeleteColumn}
+                onAddTask={openAddTaskModal} 
+                onOpenEditModal={openEditModal} // Conectado
+                onUpdateColumnTitle={updateColumnTitle} // Conectado
+                onRequestDeleteTask={requestDeleteTask} // Conectado
+                onRequestDeleteColumn={requestDeleteColumn} // Conectado
               />
             ))}
           </SortableContext>
 
-          {/* Botão "+ Adicionar Coluna" sempre visível */}
-          {/* onClick agora chama a função que abre o modal */}
           <button 
             onClick={openAddColumnModal} 
             className={styles.addNewColumnButton}
           >
             + Adicionar Coluna
           </button>
-          
         </div>
       </div>
 
-      {/* Overlay (fantasma) para itens arrastados */}
       <DragOverlay>
-        {/* Renderiza um clone da Coluna se uma coluna estiver ativa */}
         {activeColumn && (
           <Column 
             column={activeColumn} 
             activeTask={null} 
             onAddTask={openAddTaskModal}
-            onUpdateTask={updateTaskContent}
+            onOpenEditModal={openEditModal}
             onUpdateColumnTitle={updateColumnTitle}
-            onRequestDeleteTask={requestDeleteTask} 
+            onRequestDeleteTask={requestDeleteTask}
             onRequestDeleteColumn={requestDeleteColumn}
           />
         )}
-        {/* Renderiza um clone da Tarefa se uma tarefa estiver ativa */}
         {activeTask && (
           <TaskCard 
             task={activeTask} 
-            onUpdateTask={updateTaskContent} 
+            onOpenEditModal={openEditModal}
             onRequestDelete={requestDeleteTask}
           />
         )}
       </DragOverlay>
 
-      {/* Modal para Adicionar Coluna ou Tarefa */}
       <Modal 
         isOpen={!!activeModal} 
         onClose={closeModal}
         title={
-          // Define o título do modal dinamicamente
           activeModal?.type === 'addColumn' 
             ? 'Criar Nova Coluna'
             : 'Adicionar Nova Tarefa'
         }
       >
-        {/* Renderiza o formulário correto dentro do modal */}
         {activeModal?.type === 'addColumn' && (
           <AddColumnForm 
-            onSave={handleCreateColumn} // Chama a função de criar coluna
-            onCancel={closeModal} // Fecha o modal
+            onSave={handleCreateColumn}
+            onCancel={closeModal}
+            isPending={createColumnMutation.isPending} // Passa o loading
           />
         )}
         {activeModal?.type === 'addTask' && (
           <AddTaskForm 
-            // Chama a função de criar tarefa, passando o ID da coluna ativa
             onSave={(content) => handleCreateTask(activeModal.columnId, content)}
-            onCancel={closeModal} // Fecha o modal
+            onCancel={closeModal}
+            isPending={createTaskMutation.isPending}
           />
         )}
       </Modal>
@@ -422,24 +544,36 @@ export default function BoardArea() {
         onClose={cancelDeletion}
         title={`Confirmar Exclusão`}
       >
-        {confirmationModalData && ( // Renderiza conteúdo só se houver dados
+        {confirmationModalData && ( 
           <div className={styles.confirmationContent}>
             <p>
               Tem certeza que deseja excluir 
               <strong> "{confirmationModalData.name}"</strong>?
             </p>
-            {/* Mensagem extra se for coluna */}
             {confirmationModalData.type === 'column' && (
               <p className={styles.warningText}>
                 (Todas as tarefas dentro desta coluna também serão excluídas!)
               </p>
             )}
             <div className={styles.confirmationButtons}>
-              <button onClick={cancelDeletion} className={styles.cancelButton}>
+              <button 
+                onClick={cancelDeletion} 
+                className={styles.cancelButton}
+                // Desabilita se qualquer deleção estiver ocorrendo
+                disabled={deleteTaskMutation.isPending || deleteColumnMutation.isPending}
+              >
                 Cancelar
               </button>
-              <button onClick={confirmDeletion} className={styles.confirmDeleteButton}>
-                Excluir
+              <button 
+                onClick={confirmDeletion} 
+                className={styles.confirmDeleteButton}
+                // Desabilita se qualquer deleção estiver ocorrendo
+                disabled={deleteTaskMutation.isPending || deleteColumnMutation.isPending}
+              >
+                {/* Mostra o texto de loading correto */}
+                {(deleteTaskMutation.isPending || deleteColumnMutation.isPending) 
+                  ? 'Excluindo...' 
+                  : 'Excluir'}
               </button>
             </div>
           </div>

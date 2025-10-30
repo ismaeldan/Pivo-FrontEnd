@@ -9,18 +9,20 @@ import { useState, useEffect } from 'react';
 interface TaskCardProps {
   task: Task;
   isOverlayDragging?: boolean; 
-  onUpdateTask: (id: string, content: string) => void; 
-  onRequestDelete: (task: Task) => void
+  onRequestDelete: (task: Task) => void;
+  // 1. Renomeamos a prop: ela não atualiza mais, ela ABRE o modal
+  onOpenEditModal: (task: Task) => void; 
 }
 
 export default function TaskCard({ 
   task, 
   isOverlayDragging, 
-  onUpdateTask,
-  onRequestDelete // Recebe a função
+  onRequestDelete,
+  onOpenEditModal // 2. Receba a nova prop
 }: TaskCardProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState(task.content);
+  
+  // 3. REMOVEMOS os estados 'isEditing' e 'editedTitle'
+  
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -28,16 +30,14 @@ export default function TaskCard({
   }, []);
 
   const { 
-    attributes, 
-    listeners, 
-    setNodeRef, 
-    transform, 
-    transition, 
+    attributes, listeners, setNodeRef, 
+    transform, transition, 
     isDragging: isSortableDragging 
   } = useSortable({
     id: task.id, 
     data: { type: 'Task', task: task },
-    disabled: isOverlayDragging || isEditing, 
+    // 4. A edição não desabilita mais o DND, então a lógica é mais simples
+    disabled: isOverlayDragging, 
   });
 
   const style = {
@@ -45,66 +45,48 @@ export default function TaskCard({
     transition,
   };
 
-  useEffect(() => {
-    if (!isEditing) {
-      setEditedContent(task.content);
-    }
-  }, [task.content, isEditing]);
+  // 5. REMOVEMOS 'useEffect' para 'editedTitle', 'handleSave', 'handleKeyDown'
 
-  const handleSave = () => {
-    if (editedContent.trim() && editedContent !== task.content) {
-      onUpdateTask(task.id, editedContent);
-    }
-    setIsEditing(false);
-  };
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleSave();
-    if (e.key === 'Escape') {
-      setEditedContent(task.content);
-      setIsEditing(false);
-    }
-  };
-
-  // Placeholder quando a tarefa está sendo arrastada
   if (isSortableDragging) {
     return <div ref={setNodeRef} style={style} className={styles.taskCardDragging} />;
   }
   
   return (
+    // 6. 'onClick' agora chama a função para ABRIR O MODAL
     <div 
       ref={setNodeRef}
       style={style}
-      // Aplica atributos DND só no cliente
       {...(mounted ? { ...attributes } : {})} 
-      // Aplica listeners DND só no cliente E se não estiver editando
-      {...(mounted && !isEditing ? listeners : {})} 
+      {...(mounted ? listeners : {})} // Não precisamos mais da lógica '!isEditing'
       className={styles.taskCard}
-      onDoubleClick={() => setIsEditing(true)}
+      // 7. REMOVIDO 'onDoubleClick', ADICIONADO 'onClick'
+      onClick={() => onOpenEditModal(task)} 
     >
-      {/* Conteúdo editável ou visível */}
-      {isEditing ? (
-        <input 
-          className={styles.taskInput}
-          value={editedContent}
-          onChange={(e) => setEditedContent(e.target.value)}
-          onBlur={handleSave} 
-          onKeyDown={handleKeyDown} 
-          autoFocus
-        />
-      ) : (
-        <p className={styles.taskContent}>{task.content}</p> 
-      )}
+      {/* 8. Renderização não é mais condicional */}
+      <div className={styles.taskContent}>
+        <p className={styles.taskTitle}>{task.title}</p>
+        {task.description && (
+          <p className={styles.taskDescription}>{task.description}</p>
+        )}
+      </div>
       
-      {/* Botão de Deletar Tarefa (só visível se não estiver editando) */}
-      {!isEditing && (
-        <button 
-          onClick={() => onRequestDelete(task)} 
-          className={styles.deleteTaskButton}
-          aria-label="Deletar tarefa"
-        >
-          &times; 
-        </button>
-      )}
+      {/* 9. Botão de Status (baseado na API) */}
+      <div className={`${styles.statusBadge} ${styles[task.status]}`}>
+        {task.status}
+      </div>
+
+      <button 
+        // 10. IMPORTANTE: Adiciona e.stopPropagation()
+        //     para evitar que o modal abra ao clicar em deletar
+        onClick={(e) => {
+          e.stopPropagation(); 
+          onRequestDelete(task);
+        }} 
+        className={styles.deleteTaskButton}
+        aria-label="Deletar tarefa"
+      >
+        &times; 
+      </button>
     </div>
   );
 }

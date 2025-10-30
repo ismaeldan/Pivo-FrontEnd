@@ -7,9 +7,10 @@ interface AddColumnFormProps {
   // 1. A assinatura 'onSave' agora envia o título E um array de strings (conteúdo das tarefas)
   onSave: (title: string, taskContents: string[]) => void;
   onCancel: () => void;
+  isPending: boolean;
 }
 
-export default function AddColumnForm({ onSave, onCancel }: AddColumnFormProps) {
+export default function AddColumnForm({ onSave, onCancel, isPending }: AddColumnFormProps) {
   // Estado para o título da coluna
   const [title, setTitle] = useState('');
   
@@ -28,7 +29,7 @@ export default function AddColumnForm({ onSave, onCancel }: AddColumnFormProps) 
   // Salva a coluna inteira
   const handleSaveColumn = () => {
     // 2. Só salva se o título for preenchido
-    if (title.trim()) {
+    if (title.trim() && !isPending) {
       onSave(title.trim(), tasks);
       // Limpa tudo
       setTitle('');
@@ -65,6 +66,7 @@ export default function AddColumnForm({ onSave, onCancel }: AddColumnFormProps) 
         onKeyDown={(e) => e.key === 'Escape' && onCancel()}
         placeholder="Digite o título da coluna..."
         autoFocus
+        disabled={isPending}
       />
 
       {/* 2. Lista de Tarefas Adicionadas */}
@@ -86,18 +88,19 @@ export default function AddColumnForm({ onSave, onCancel }: AddColumnFormProps) 
           onChange={(e) => setCurrentTaskContent(e.target.value)}
           onKeyDown={handleTaskKeyDown}
           placeholder="Adicionar uma tarefa..."
+          disabled={isPending}
         />
-        <button onClick={handleAddTask} className={styles.addTaskButton}>
+        <button onClick={handleAddTask} className={styles.addTaskButton} disabled={isPending}>
           Adicionar
         </button>
       </div>
 
       {/* 4. Botões de Ação */}
       <div className={styles.buttonGroup}>
-        <button onClick={handleSaveColumn} className={styles.saveButton}>
+        <button onClick={handleSaveColumn} className={styles.saveButton} disabled={isPending}>
           Salvar Coluna
         </button>
-        <button onClick={onCancel} className={styles.cancelButton}>
+        <button onClick={onCancel} className={styles.cancelButton} disabled={isPending}>
           Cancelar
         </button>
       </div>

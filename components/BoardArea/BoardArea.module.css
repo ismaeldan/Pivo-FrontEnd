@@ -108,3 +108,18 @@
 .confirmDeleteButton:hover {
   background-color: #e53935; /* Vermelho mais escuro */
 }
+
+.boardLoading,
+.boardError {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 80vh; /* Ocupa a área do board */
+  font-size: 1.5rem;
+  color: #999;
+}
+
+.boardError {
+  color: #ff4d4d;
+}

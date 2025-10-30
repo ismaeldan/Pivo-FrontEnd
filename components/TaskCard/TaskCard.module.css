@@ -23,14 +23,16 @@
 }
 
 .taskContent {
-  /* Garante que o parágrafo ocupe espaço para o double-click */
-  width: calc(100% - 24px); /* Subtrai espaço para o botão 'X' */
+  width: calc(100% - 24px); 
   min-height: 20px;
-  /* Evita seleção de texto ao arrastar */
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  /* Adições: */
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem; /* Espaço entre título e descrição */
 }
 
 .taskInput {
@@ -44,6 +46,17 @@
   font-family: inherit; /* Usa a mesma fonte do resto */
   font-size: 0.9rem; /* Tamanho similar ao <p> */
   box-sizing: border-box; /* Garante padding correto */
+}
+
+.taskTitle {
+  font-weight: 500; /* Título um pouco mais forte */
+  color: #E9ECEF;
+}
+
+/* NOVO ESTILO */
+.taskDescription {
+  font-size: 0.8rem; /* Descrição menor */
+  color: #adb5bd; /* Cor mais suave */
 }
 
 /* Estilo para o botão de deletar tarefa ('X') */
@@ -73,4 +86,27 @@
 .deleteTaskButton:hover {
   color: #ff4d4d; /* Cor vermelha no hover */
   background-color: rgba(255, 77, 77, 0.1); /* Fundo sutil vermelho */
+}
+
+.statusBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  width: fit-content; /* Faz o badge se ajustar ao texto */
+}
+
+/* Cores baseadas nos status da sua API */
+.pending {
+  background-color: #4a4a4a;
+  color: #e0e0e0;
+}
+.in_progress {
+  background-color: #007bff;
+  color: #ffffff;
+}
+.completed {
+  background-color: #28a745;
+  color: #ffffff;
 }

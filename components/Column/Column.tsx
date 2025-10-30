@@ -8,12 +8,13 @@ import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo, useState, useEffect } from 'react'; 
 
+// Esta interface deve corresponder a todas as props passadas no BoardArea
 interface ColumnProps {
   column: ColumnType;
   activeTask: Task | null;
   onAddTask: (columnId: string) => void; 
-  onUpdateTask: (id: string, content: string) => void;
-  onUpdateColumnTitle: (id: string, newTitle: string) => void;
+  onOpenEditModal: (task: Task) => void; 
+  onUpdateColumnTitle: (id: string, newTitle: string) => void; // A prop que queremos usar
   onRequestDeleteTask: (task: Task) => void; 
   onRequestDeleteColumn: (column: ColumnType) => void;
 }
@@ -22,15 +23,15 @@ export default function Column({
   column, 
   activeTask, 
   onAddTask, 
-  onUpdateTask,
-  onUpdateColumnTitle,
-  onRequestDeleteTask, // Recebe a função
-  onRequestDeleteColumn // Recebe a função
+  onOpenEditModal,
+  onUpdateColumnTitle, // Recebemos a prop
+  onRequestDeleteTask,
+  onRequestDeleteColumn
 }: ColumnProps) { 
   
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(column.title);
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false); // Para correção de hidratação
 
   useEffect(() => {
     setMounted(true);
@@ -46,7 +47,7 @@ export default function Column({
   } = useSortable({
     id: column.id, 
     data: { type: 'Column', column: column, },
-    disabled: !!activeTask || isEditingTitle, 
+    disabled: !!activeTask || isEditingTitle, // Desabilita DND se estiver editando
   });
 
   const { 
@@ -55,7 +56,6 @@ export default function Column({
   } = useDroppable({
     id: column.id, 
     data: { type: 'Column', column: column, },
-    // 'disabled' removido para permitir drop em colunas vazias
   });
 
   const taskIds = useMemo(() => column.tasks.map(task => task.id), [column.tasks]);
@@ -66,9 +66,29 @@ export default function Column({
     }
   }, [column.title, isEditingTitle]);
 
-  const handleTitleSave = () => { /* ... (igual) ... */ };
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { /* ... (igual) ... */ };
-  const style = { transform: CSS.Transform.toString(transform), transition, };
+  // Função para salvar o título
+  const handleTitleSave = () => {
+    if (editedTitle.trim() && editedTitle !== column.title) {
+      // Chama a prop (que chama a mutação no BoardArea)
+      onUpdateColumnTitle(column.id, editedTitle); 
+    }
+    setIsEditingTitle(false); // Sai do modo de edição
+  };
+
+  // Função para salvar com 'Enter' ou cancelar com 'Escape'
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTitleSave();
+    } else if (e.key === 'Escape') {
+      setEditedTitle(column.title); // Reverte
+      setIsEditingTitle(false);
+    }
+  };
+
+  const style = { 
+    transform: CSS.Transform.toString(transform), 
+    transition, 
+  };
 
   if (isColumnDragging) {
     return (
@@ -89,27 +109,29 @@ export default function Column({
       style={style}
       className={`${styles.column} ${isOver && activeTask ? styles.columnOver : ''}`}
     >
-      {/* Container do Cabeçalho da Coluna */}
       <div className={styles.columnHeader}>
         {isEditingTitle ? (
+          // MODO DE EDIÇÃO
           <input 
             className={styles.columnTitleInput}
             value={editedTitle}
             onChange={(e) => setEditedTitle(e.target.value)}
-            onBlur={handleTitleSave}
-            onKeyDown={handleTitleKeyDown}
+            // --- ESTAS SÃO AS LINHAS CRÍTICAS ---
+            onBlur={handleTitleSave} // Salva quando clica fora
+            onKeyDown={handleTitleKeyDown} // Salva com 'Enter'
+            // --- FIM DAS LINHAS CRÍTICAS ---
             autoFocus
           />
         ) : (
+          // MODO DE VISUALIZAÇÃO
           <h2 
-            {...(mounted ? { ...attributes, ...listeners } : {})} // Aplica DND listeners só no cliente
+            {...(mounted ? { ...attributes, ...listeners } : {})} 
             className={styles.columnTitle}
-            onDoubleClick={() => setIsEditingTitle(true)}
+            onDoubleClick={() => setIsEditingTitle(true)} // Entra no modo de edição
           >
             {column.title}
           </h2>
         )}
-        {/* Botão de Deletar Coluna (só aparece se não estiver editando título) */}
         {!isEditingTitle && (
           <button
             onClick={() => onRequestDeleteColumn(column)}
@@ -121,7 +143,6 @@ export default function Column({
         )}
       </div>
       
-      {/* Contexto para reordenação VERTICAL das tarefas */}
       <SortableContext 
         items={taskIds} 
         strategy={verticalListSortingStrategy}
@@ -132,14 +153,13 @@ export default function Column({
               key={task.id} 
               task={task} 
               isOverlayDragging={activeTask?.id === task.id} 
-              onUpdateTask={onUpdateTask}
+              onOpenEditModal={onOpenEditModal} 
               onRequestDelete={onRequestDeleteTask}
             />
           ))}
         </div>
       </SortableContext>
 
-      {/* Botão para Adicionar Tarefa (chama o Modal) */}
       <button 
         className={styles.addNewTaskButton}
         onClick={() => onAddTask(column.id)} 

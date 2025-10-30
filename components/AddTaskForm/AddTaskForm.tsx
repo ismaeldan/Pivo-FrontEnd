@@ -8,13 +8,14 @@ interface AddTaskFormProps {
   onSave: (content: string) => void; 
   // Função para fechar o formulário
   onCancel: () => void;
+  isPending: boolean;
 }
 
-export default function AddTaskForm({ onSave, onCancel }: AddTaskFormProps) {
+export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskFormProps) {
   const [content, setContent] = useState('');
 
   const handleSave = () => {
-    if (content.trim()) {
+    if (content.trim() && !isPending) {
       onSave(content.trim());
       setContent(''); // Limpa o form
     }
@@ -41,12 +42,13 @@ export default function AddTaskForm({ onSave, onCancel }: AddTaskFormProps) {
         onKeyDown={handleKeyDown}
         placeholder="Digite o conteúdo da tarefa..."
         autoFocus
+        disabled={isPending}
       />
       <div className={styles.buttonGroup}>
-        <button onClick={handleSave} className={styles.saveButton}>
-          Adicionar
+        <button onClick={handleSave} className={styles.saveButton} disabled={isPending}>
+          {isPending ? 'Salvando...' : 'Adicionar'}
         </button>
-        <button onClick={onCancel} className={styles.cancelButton}>
+        <button onClick={onCancel} className={styles.cancelButton} disabled={isPending}>
           Cancelar
         </button>
       </div>
