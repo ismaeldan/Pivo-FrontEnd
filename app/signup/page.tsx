@@ -1,23 +1,26 @@
 "use client"; 
 
 import Image from 'next/image';
-import styles from './Login.module.css';
+import styles from '../Login.module.css'; // Vamos reusar o CSS do login
 import { useState, FormEvent } from 'react'; 
-import { useMutation, useQueryClient } from '@tanstack/react-query'; 
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation'; 
-import Link from 'next/link'; // <-- 1. IMPORTE O LINK
+import Link from 'next/link'; // Para o link de "Voltar"
 
-interface LoginCredentials {
+// 1. Interface para o payload da API de criação
+interface CreateUserPayload {
+  name: string;
   email: string;
   password: string;
 }
 
-interface LoginResponse {
-  access_token: string;
-}
-
-async function loginUser(credentials: LoginCredentials): Promise<LoginResponse> {
-  const API_URL = 'http://localhost:3100/auth/login';
+// 2. A função que o useMutation vai chamar (baseado em image_e58bd9.png)
+async function createUser(credentials: CreateUserPayload): Promise<any> {
+  
+  // NOTE: Estamos usando 'fetch' direto, pois o 'apiClient'
+  // é para chamadas autenticadas (que já têm token).
+  //
+  const API_URL = 'http://localhost:3100/users'; // Endpoint de 'image_e58bd9.png'
 
   const response = await fetch(API_URL, { 
     method: 'POST',
@@ -29,35 +32,39 @@ async function loginUser(credentials: LoginCredentials): Promise<LoginResponse> 
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Email ou senha inválidos.');
+    // Usa a mensagem de erro da API (ex: "Um usuário com este e-mail já existe.")
+    //
+    throw new Error(errorData.message || 'Falha ao criar usuário.');
   }
 
   return response.json(); 
 }
 
-export default function LoginPage() {
+export default function SignUpPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter(); 
-  const queryClient = useQueryClient(); 
 
   const mutation = useMutation({
-    mutationFn: loginUser, 
+    mutationFn: createUser, 
     
+    // 3. Sucesso: Avisa e redireciona para o Login
     onSuccess: (data) => {
-      localStorage.setItem('access_token', data.access_token);
-      queryClient.invalidateQueries({ queryKey: ['authMe'] });
-      router.push('/home');
+      // Você pode trocar o alert por um 'toast' se preferir
+      alert('Conta criada com sucesso! Faça o login.');
+      router.push('/'); // Redireciona para a página de login
     },
     onError: (error) => {
-      console.error('Erro no login:', error.message);
+      // O erro já vem tratado da função 'createUser'
+      console.error('Erro ao criar conta:', error.message);
     }
   });
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault(); 
-    if (!email || !password) return;
-    mutation.mutate({ email, password });
+    if (!name || !email || !password) return;
+    mutation.mutate({ name, email, password });
   };
 
   return (
@@ -73,8 +80,16 @@ export default function LoginPage() {
         />
         
         <h1>Pivô Board</h1>
-        <p className={styles.p}>Acesse sua conta</p>
+        <p className={styles.p}>Crie sua conta</p>
         
+        <input 
+          type="text" 
+          placeholder="Nome Completo" 
+          className={styles.input}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={mutation.isPending}
+        />
         <input 
           type="email" 
           placeholder="Email" 
@@ -103,15 +118,12 @@ export default function LoginPage() {
           className={styles.button}
           disabled={mutation.isPending}
         >
-          {mutation.isPending ? 'Entrando...' : 'Entrar'}
+          {mutation.isPending ? 'Criando...' : 'Criar conta'}
         </button>
 
-        {/* --- 2. ADICIONE ESTE BLOCO --- */}
         <div className={styles.signupLink}>
-          Não tem uma conta? <Link href="/signup">Crie uma</Link>
+          Já tem uma conta? <Link href="/">Faça o login</Link>
         </div>
-        {/* --- FIM DO BLOCO --- */}
-        
       </form>
     </div>
   );

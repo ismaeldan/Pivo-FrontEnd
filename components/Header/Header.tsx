@@ -5,7 +5,6 @@ export default function Header() {
     <header className={styles.header}>
       <span className={styles.logo}>Pivô</span>
       <nav>
-        {/* Links de navegação e Perfil do Usuário virão aqui */}
       </nav>
       <span>Usuário</span>
     </header>

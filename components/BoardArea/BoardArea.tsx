@@ -22,7 +22,8 @@ import {
 } from '@dnd-kit/sortable';
 import Modal from '../Modal/Modal';
 import AddColumnForm from '../AddColumnForm/AddColumnForm';
-import AddTaskForm from '../AddTaskForm/AddTaskForm';
+import AddTaskForm, { AddTaskData } from '../AddTaskForm/AddTaskForm';
+import EditTaskModal, { EditTaskData } from '../EditTaskModal/EditTaskModal';
 import { useBoard } from '@/hooks/useBoard';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -44,6 +45,8 @@ type ConfirmationModalData =
 interface CreateTaskPayload {
   title: string;
   columnId: string;
+  description?: string | null;
+  status?: string;
 }
 
 interface CreateTaskResponse extends Task {}
@@ -53,7 +56,10 @@ interface UpdateTaskPayload {
   data: {
     order?: number;
     columnId?: string;
-    title?: string; // (Permite update de DND e Título)
+    title?: string;
+    // --- ADICIONE OS NOVOS CAMPOS ---
+    description?: string | null;
+    status?: string;
   }
 }
 
@@ -82,6 +88,7 @@ const createTaskOnAPI = async (payload: CreateTaskPayload): Promise<CreateTaskRe
 
 // PATCH /tasks/:taskId
 const updateTaskOnAPI = async ({ taskId, data }: UpdateTaskPayload) => {
+  // A interface UpdateTaskPayload já foi atualizada
   const response = await apiClient(`/tasks/${taskId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
@@ -141,6 +148,7 @@ export default function BoardArea() {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [originalColumn, setOriginalColumn] = useState<ColumnType | null>(null); 
   const [confirmationModalData, setConfirmationModalData] = useState<ConfirmationModalData>(null);
+  // O estado 'editingTask' já existe, ótimo!
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   
   const queryClient = useQueryClient();
@@ -164,10 +172,6 @@ export default function BoardArea() {
   // Mutação para CRIAR TAREFA (POST /tasks)
   const createTaskMutation = useMutation({
     mutationFn: createTaskOnAPI,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['board'] });
-      closeModal(); 
-    },
     onError: (error) => console.error("Erro ao criar tarefa:", error),
   });
 
@@ -176,9 +180,12 @@ export default function BoardArea() {
     mutationFn: updateTaskOnAPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['board'] });
+      // MODIFICAÇÃO: Fechar o modal de edição ao salvar
+      closeEditModal(); 
     },
     onError: (error) => {
       console.error("Erro ao atualizar tarefa:", error);
+      // Opcional: Adicionar um toast/alerta de erro aqui
       queryClient.invalidateQueries({ queryKey: ['board'] }); // Reverte
     }
   });
@@ -242,25 +249,128 @@ export default function BoardArea() {
   
   // (Conectada)
   function handleCreateColumn(title: string, taskContents: string[]) {
-    // A API só aceita o título, então ignoramos 'taskContents'
-    createColumnMutation.mutate({ title: title });
+    const hasTasks = taskContents.length > 0;
+
+    // 1. Chamamos a mutação para criar a coluna
+    createColumnMutation.mutate(
+      { title: title },
+      {
+        // 2. Sobrescrevemos o onSuccess SÓ PARA ESTA CHAMADA
+        onSuccess: (newColumnData) => {
+          // newColumnData é o objeto retornado pela API (ex: { id: "...", title: "..." })
+          //
+          const newColumnId = newColumnData.id;
+
+          // 3. Verificamos se é opcionalmente para criar tarefas
+          if (hasTasks && newColumnId) {
+            
+            // Criamos um array de promessas
+            const taskCreationPromises = taskContents.map(taskTitle => 
+              createTaskMutation.mutateAsync({ // Usamos mutateAsync
+                title: taskTitle,
+                columnId: newColumnId,
+              })
+            );
+
+            // 4. Esperamos todas as tarefas serem criadas
+            Promise.all(taskCreationPromises)
+              .then(() => {
+                // 5. Só então invalidamos e fechamos
+                queryClient.invalidateQueries({ queryKey: ['board'] });
+                closeModal();
+              })
+              .catch((err) => {
+                console.error("Erro ao criar tarefas em lote:", err);
+                // A coluna foi criada, mas as tarefas falharam.
+                // Mesmo assim, atualizamos o board para mostrar a nova coluna.
+                queryClient.invalidateQueries({ queryKey: ['board'] });
+                closeModal();
+              });
+
+          } else {
+            // 3b. Se não tinha tarefas, só invalida e fecha
+            queryClient.invalidateQueries({ queryKey: ['board'] });
+            closeModal();
+          }
+        },
+        onError: (error) => {
+          // O onError definido na mutação já vai rodar,
+          // mas podemos adicionar algo específico aqui se quisermos
+          console.error("Falha ao criar a coluna (etapa 1):", error);
+          // O modal não será fechado, o que é bom.
+        }
+      }
+    );
   }
 
   // (Conectada)
-  function handleCreateTask(columnId: string, content: string) {
+ function handleCreateTask(columnId: string, data: AddTaskData) {
     createTaskMutation.mutate({
-      title: content,
+      title: data.title,
+      description: data.description,
+      status: data.status,
       columnId: columnId,
+    }, {
+      // Adicionamos a lógica de sucesso aqui, no local da chamada
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['board'] });
+        closeModal(); // Fecha o modal "Adicionar Nova Tarefa"
+      }
     });
   }
 
   // (Conectada)
+  // Esta função não é mais usada, mas vamos manter por enquanto.
+  // A nova handleUpdateTaskDetails faz o trabalho de edição.
   function updateTaskTitle(taskId: string, newTitle: string) {
     updateTaskMutation.mutate({
       taskId: taskId,
       data: { title: newTitle } // Envia o novo título para a API
     });
   }
+  
+  // (NOVA FUNÇÃO)
+  // Chamada quando o modal de edição é salvo
+  function handleUpdateTaskDetails(data: EditTaskData) {
+    if (!editingTask) return;
+
+    // Compara para enviar apenas o que mudou (otimização opcional)
+    const { title, description, status, moveToTop } = data;
+    
+    // Otimização: Se nada mudou, apenas feche o modal
+    const changes: {
+      title: string;
+      description: string | null;
+      status: string;
+      order?: number; // O 'order' é opcional
+    } = {
+      title: title,
+      description: description,
+      status: status,
+    };
+
+    if (moveToTop) {
+      changes.order = 0; // Move para o topo
+    }
+    
+    const dataHasChanged = 
+      changes.title !== editingTask.title ||
+      changes.description !== (editingTask.description || null) ||
+      changes.status !== editingTask.status;
+
+    // Se nem os dados mudaram E nem o 'moveToTop' foi marcado, não faz nada
+    if (!dataHasChanged && !moveToTop) {
+      closeEditModal();
+      return;
+    }
+    
+    // 4. Chama a mutação existente com os novos dados
+    updateTaskMutation.mutate({
+      taskId: editingTask.id,
+      data: changes // 'data' agora pode conter { title, description, status, order }
+    });
+  }
+
 
   // (Conectada)
   function updateColumnTitle(columnId: string, newTitle: string) {
@@ -291,6 +401,8 @@ export default function BoardArea() {
     }
   }
 
+  // ... (handleDragEnd e handleDragOver permanecem iguais) ...
+  // [O código de handleDragEnd e handleDragOver não precisa de alteração para esta tarefa]
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
@@ -412,14 +524,17 @@ export default function BoardArea() {
     }
   }
 
+
   // --- FUNÇÕES DO MODAL ---
   const openAddColumnModal = () => setActiveModal({ type: 'addColumn' });
   const openAddTaskModal = (columnId: string) => setActiveModal({ type: 'addTask', columnId });
   const closeModal = () => setActiveModal(null);
 
+  // Esta função já existe e está correta
   const openEditModal = (task: Task) => {
     setEditingTask(task); // Define a tarefa que o modal deve editar
   };
+  // Esta função já existe e está correta
   const closeEditModal = () => {
     setEditingTask(null); // Limpa a tarefa
   };
@@ -532,7 +647,7 @@ export default function BoardArea() {
         )}
         {activeModal?.type === 'addTask' && (
           <AddTaskForm 
-            onSave={(content) => handleCreateTask(activeModal.columnId, content)}
+            onSave={(data) => handleCreateTask(activeModal.columnId, data)}
             onCancel={closeModal}
             isPending={createTaskMutation.isPending}
           />
@@ -579,6 +694,18 @@ export default function BoardArea() {
           </div>
         )}
       </Modal>
+
+      {/* --- NOSSO NOVO MODAL DE EDIÇÃO --- */}
+      {editingTask && (
+        <EditTaskModal
+          isOpen={!!editingTask}
+          onClose={closeEditModal}
+          task={editingTask}
+          onSave={handleUpdateTaskDetails}
+          isPending={updateTaskMutation.isPending}
+        />
+      )}
+      {/* --- FIM DO NOVO MODAL --- */}
 
     </DndContext>
   );

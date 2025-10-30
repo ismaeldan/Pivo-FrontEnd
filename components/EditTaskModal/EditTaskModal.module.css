@@ -1,9 +1,9 @@
-/* components/AddTaskForm/AddTaskForm.module.css */
+/* components/EditTaskModal/EditTaskModal.module.css */
 
-.formContainer {
+.form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.25rem; /* Um pouco mais de espaço */
 }
 
 .formGroup {
@@ -48,7 +48,7 @@
   display: flex;
   justify-content: flex-end; /* Alinhar à direita */
   gap: 0.5rem;
-  margin-top: 1rem;
+  margin-top: 1rem; /* Espaço acima dos botões */
 }
 
 .saveButton {
@@ -83,4 +83,32 @@
 
 .cancelButton:hover {
   background-color: #333;
+}
+
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  background-color: #333;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkboxGroup label {
+  font-size: 0.9rem;
+  color: #E9ECEF;
+  cursor: pointer;
+  user-select: none; /* Evita selecionar o texto */
 }

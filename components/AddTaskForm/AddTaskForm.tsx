@@ -1,57 +1,111 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import styles from './AddTaskForm.module.css';
 
+// 1. Tipos de Status (igual ao EditTaskModal)
+const STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pendente' },
+  { value: 'in_progress', label: 'Em Progresso' },
+  { value: 'completed', label: 'Concluído' },
+];
+
+// 2. Define a estrutura dos dados que o onSave enviará
+export interface AddTaskData {
+  title: string;
+  description: string | null;
+  status: string;
+}
+
 interface AddTaskFormProps {
-  // Envia o novo conteúdo para ser salvo
-  onSave: (content: string) => void; 
-  // Função para fechar o formulário
+  // 3. onSave agora envia um objeto AddTaskData
+  onSave: (data: AddTaskData) => void; 
   onCancel: () => void;
   isPending: boolean;
 }
 
 export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskFormProps) {
-  const [content, setContent] = useState('');
+  
+  // 4. Estados para os novos campos
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('pending'); // Default para 'pending'
 
-  const handleSave = () => {
-    if (content.trim() && !isPending) {
-      onSave(content.trim());
-      setContent(''); // Limpa o form
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Salva com "Enter" (sem "Shift" para permitir quebra de linha)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Evita a quebra de linha
-      handleSave();
-    }
-    // Cancela com "Escape"
-    if (e.key === 'Escape') {
-      onCancel();
+  const handleSave = (e: FormEvent) => {
+    e.preventDefault(); // É um formulário agora
+    
+    if (title.trim() && !isPending) {
+      onSave({
+        title: title.trim(),
+        description: description.trim() || null,
+        status: status,
+      });
+      // Limpa o form
+      setTitle('');
+      setDescription('');
+      setStatus('pending');
     }
   };
 
   return (
-    <div className={styles.formContainer}>
-      <textarea
-        className={styles.textArea}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Digite o conteúdo da tarefa..."
-        autoFocus
-        disabled={isPending}
-      />
+    // 5. Atualiza o JSX para ser um formulário completo
+    <form onSubmit={handleSave} className={styles.formContainer}>
+      
+      {/* Título */}
+      <div className={styles.formGroup}>
+        <label htmlFor="add-title">Título (Obrigatório)</label>
+        <input
+          id="add-title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className={styles.input}
+          disabled={isPending}
+          autoFocus
+        />
+      </div>
+
+      {/* Descrição */}
+      <div className={styles.formGroup}>
+        <label htmlFor="add-description">Descrição</label>
+        <textarea
+          id="add-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className={styles.textarea}
+          rows={4}
+          placeholder="Adicione uma descrição..."
+          disabled={isPending}
+        />
+      </div>
+
+      {/* Status */}
+      <div className={styles.formGroup}>
+        <label htmlFor="add-status">Status Inicial</label>
+        <select
+          id="add-status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className={styles.select}
+          disabled={isPending}
+        >
+          {STATUS_OPTIONS.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Botões */}
       <div className={styles.buttonGroup}>
-        <button onClick={handleSave} className={styles.saveButton} disabled={isPending}>
-          {isPending ? 'Salvando...' : 'Adicionar'}
-        </button>
-        <button onClick={onCancel} className={styles.cancelButton} disabled={isPending}>
+        <button type="button" onClick={onCancel} className={styles.cancelButton} disabled={isPending}>
           Cancelar
         </button>
+        <button type="submit" className={styles.saveButton} disabled={isPending || !title.trim()}>
+          {isPending ? 'Salvando...' : 'Adicionar Tarefa'}
+        </button>
       </div>
-    </div>
+    </form>
   );
 }

@@ -51,12 +51,28 @@
 .taskTitle {
   font-weight: 500; /* Título um pouco mais forte */
   color: #E9ECEF;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Número de linhas para o título */
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* NOVO ESTILO */
 .taskDescription {
   font-size: 0.8rem; /* Descrição menor */
   color: #adb5bd; /* Cor mais suave */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Número de linhas para a descrição */
+  line-clamp: 3; /* Propriedade padrão para compatibilidade */
+  -webkit-box-orient: vertical;
 }
 
 /* Estilo para o botão de deletar tarefa ('X') */
