@@ -385,9 +385,13 @@ export default function BoardArea() {
 
   
   // --- FUNÇÕES DO DND-KIT ---
-  function handleDragStart(event: DragStartEvent) {
+function handleDragStart(event: DragStartEvent) {
     const { active } = event;
-    if (active.data.current?.type === 'Task') {
+
+    // CORREÇÃO: 
+    // Adicionamos '&& active.data.current.task' e '&& active.data.current.column'
+    // para garantir que os dados existem antes de tentar acessá-los.
+    if (active.data.current?.type === 'Task' && active.data.current.task) {
       const task = active.data.current.task as Task;
       setActiveTask(task);
       setOriginalColumn(
@@ -395,53 +399,40 @@ export default function BoardArea() {
       );
       return;
     }
-    if (active.data.current?.type === 'Column') {
+    if (active.data.current?.type === 'Column' && active.data.current.column) {
       setActiveColumn(active.data.current.column as ColumnType);
       return;
     }
   }
 
-  // ... (handleDragEnd e handleDragOver permanecem iguais) ...
-  // [O código de handleDragEnd e handleDragOver não precisa de alteração para esta tarefa]
+  //
+  // --- SUBSTITUA TODA A FUNÇÃO handleDragEnd POR ESTA ---
+  //
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
-    // LÓGICA DE REVERSÃO
-    if (!over && activeTask && originalColumn) {
-      // (Esta é uma atualização local otimista que falhou, 
-      //  não precisa de chamada de API, mas o refetch do DND a corrigirá)
-      //  Para segurança, vamos forçar a invalidação
-      queryClient.invalidateQueries({ queryKey: ['board'] });
-      
-      setActiveTask(null);
-      setActiveColumn(null);
-      setOriginalColumn(null);
-      return;
-    }
-    
+    // 1. Limpa estados de "arrasto"
     setActiveTask(null);
     setActiveColumn(null);
-    setOriginalColumn(null);
-    
-    if (!over) return; 
-    if (active.id === over.id) return;
 
-    // LÓGICA DE ARRASTAR COLUNA (Ainda local - podemos conectar à API depois)
+    // 2. Condições de saída
+    if (!over) return; // Soltou fora de uma zona válida
+    if (active.id === over.id) return; // Soltou no mesmo lugar
+
+    // --- LÓGICA DE ARRASTAR COLUNA ---
     const isActiveColumn = active.data.current?.type === 'Column';
     if (isActiveColumn) {
-      // Encontra os índices antes de atualizar o estado
       const activeColumnIndex = columns.findIndex(col => col.id === active.id);
       const overColumnIndex = columns.findIndex(col => col.id === over.id);
 
-      // Se os índices são válidos e diferentes
       if (activeColumnIndex !== -1 && overColumnIndex !== -1 && activeColumnIndex !== overColumnIndex) {
         
-        // 1. Atualização Otimista (move no estado local imediatamente)
+        // A. Atualização Otimista (Visual)
         setColumns(prevColumns => {
           return arrayMove(prevColumns, activeColumnIndex, overColumnIndex);
         });
 
-        // 2. Chama a Mutação para salvar a nova ordem no backend
+        // B. Chamada de API (Backend)
         updateColumnMutation.mutate({
           columnId: active.id as string,
           data: { order: overColumnIndex }
@@ -450,76 +441,88 @@ export default function BoardArea() {
       return; // Finaliza a função
     }
 
-    // LÓGICA DE ARRASTAR TAREFA (Conectada à API)
+    // --- LÓGICA DE ARRASTAR TAREFA ---
+    // - Corrigido 'possibly undefined'
     const isActiveTask = active.data.current?.type === 'Task';
-    if (isActiveTask) {
-      // Atualização otimista (muda o estado local primeiro)
-      setColumns((prevColumns) => {
-        const activeColumn = prevColumns.find(col => col.tasks.some(task => task.id === active.id));
-        if (!activeColumn) return prevColumns;
-        const overColumn = prevColumns.find(col => 
-          col.id === over.id || col.tasks.some(task => task.id === over.id)
-        );
-        if (!overColumn) return prevColumns;
+    if (isActiveTask && active.data.current?.task) {
+      
+      const taskToMove = active.data.current.task as Task;
 
-        // CASO 1: REORDENAÇÃO (Mesma Coluna)
-        if (activeColumn.id === overColumn.id) {
-          const activeIndex = activeColumn.tasks.findIndex(t => t.id === active.id);
-          const overIndex = overColumn.tasks.findIndex(t => t.id === over.id);
-          if (activeIndex === -1 || overIndex === -1) return prevColumns;
-          
-          const newTasks = arrayMove(activeColumn.tasks, activeIndex, overIndex);
-          const newOrder = overIndex; 
+      // A. Encontrar coluna de ORIGEM e índice
+      const activeColumn = columns.find(col => 
+        col.tasks.some(task => task.id === active.id)
+      );
+      if (!activeColumn) return; // Failsafe
+      const activeIndex = activeColumn.tasks.findIndex(t => t.id === active.id);
 
-          // Chama a mutação PATCH /tasks/:taskId
-          updateTaskMutation.mutate({
-            taskId: active.id as string,
-            data: { order: newOrder }
-          });
+
+      // B. Encontrar coluna de DESTINO e ÍNDICE
+      //    Esta é a correção principal para
+      let targetColumnId: string;
+      let targetIndex: number;
+
+      // Cenário 1: Soltou sobre uma TAREFA
+      if (over.data.current?.type === 'Task') {
+        // Encontra a coluna que CONTÉM a tarefa 'over'
+        const overTaskColumn = columns.find(col => col.tasks.some(t => t.id === over.id));
+        if (!overTaskColumn) return; // Failsafe
+        
+        targetColumnId = overTaskColumn.id; // <-- Pega o ID da COLUNA
+        targetIndex = overTaskColumn.tasks.findIndex(t => t.id === over.id);
+      } 
+      // Cenário 2: Soltou sobre uma COLUNA
+      else if (over.data.current?.type === 'Column') {
+        targetColumnId = over.id as string; // <-- O ID de 'over' É o ID da coluna
+        const overColumn = columns.find(col => col.id === targetColumnId);
+        if (!overColumn) return; // Failsafe
+        
+        targetIndex = overColumn.tasks.length; // Adiciona ao final da coluna
+      } 
+      // Cenário 3: Alvo inválido (não deve acontecer)
+      else {
+        console.error("Alvo de drop desconhecido:", over);
+        return;
+      }
+      
+      // C. Verificar se algo realmente mudou
+      if (activeColumn.id === targetColumnId && activeIndex === targetIndex) {
+        return;
+      }
+      
+      // D. Atualização Otimista (Visual) - SEPARAÇÃO DO SIDE-EFFECT
+      setColumns((prev) => {
+        const prevActiveCol = prev.find(c => c.id === activeColumn.id);
+        const prevTargetCol = prev.find(c => c.id === targetColumnId);
+
+        if (!prevActiveCol || !prevTargetCol) return prev; // Failsafe
+
+        // Caso 1: Mesma coluna (Reordenação)
+        if (prevActiveCol.id === prevTargetCol.id) {
+          const newTasks = arrayMove(prevActiveCol.tasks, activeIndex, targetIndex);
+          return prev.map(c => c.id === prevActiveCol.id ? {...c, tasks: newTasks} : c);
+        } 
+        // Caso 2: Colunas diferentes (Movimentação)
+        else {
+          const newActiveTasks = prevActiveCol.tasks.filter(t => t.id !== active.id);
+          const newTargetTasks = [...prevTargetCol.tasks];
+          newTargetTasks.splice(targetIndex, 0, taskToMove);
           
-          return prevColumns.map(col => {
-            if (col.id === activeColumn.id) {
-              return { ...col, tasks: newTasks };
-            }
-            return col;
+          return prev.map(c => {
+            if (c.id === prevActiveCol.id) return {...c, tasks: newActiveTasks};
+            if (c.id === prevTargetCol.id) return {...c, tasks: newTargetTasks};
+            return c;
           });
         }
+      });
 
-        // CASO 2: MOVIMENTAÇÃO (Colunas Diferentes)
-        const taskToMove = activeColumn.tasks.find(t => t.id === active.id);
-        if (!taskToMove) return prevColumns;
-
-        const newActiveColumnTasks = activeColumn.tasks.filter(t => t.id !== active.id);
-        const overIndex = overColumn.tasks.findIndex(t => t.id === over.id);
-        const newOverColumnTasks = [...overColumn.tasks];
-
-        let newOrder: number;
-        if (overIndex === -1) { 
-          newOverColumnTasks.push(taskToMove);
-          newOrder = newOverColumnTasks.length - 1;
-        } else { 
-          newOverColumnTasks.splice(overIndex, 0, taskToMove);
-          newOrder = overIndex;
-        }
-        
-        // Chama a mutação PATCH /tasks/:taskId
-        updateTaskMutation.mutate({
-          taskId: taskToMove.id,
-          data: { 
-            columnId: overColumn.id, 
-            order: newOrder
+      // E. Chamada de API (Backend) - AGORA DO LADO DE FORA
+      //    'targetColumnId' é garantido ser um UUID de coluna, corrigindo o erro.
+      updateTaskMutation.mutate({
+          taskId: active.id as string,
+          data: {
+              columnId: targetColumnId,
+              order: targetIndex
           }
-        });
-        
-        return prevColumns.map(col => {
-          if (col.id === activeColumn.id) {
-            return { ...col, tasks: newActiveColumnTasks };
-          }
-          if (col.id === overColumn.id) {
-            return { ...col, tasks: newOverColumnTasks };
-          }
-          return col;
-        });
       });
     }
   }
