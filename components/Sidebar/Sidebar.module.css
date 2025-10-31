@@ -1,0 +1,131 @@
+/* components/Sidebar/Sidebar.module.css */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Empurra o perfil para baixo */
+  width: 260px; /* Largura da sidebar */
+  flex-shrink: 0; /* Impede que a sidebar encolha */
+  height: 100vh;
+  background-color: #2a2b2d;
+  border-right: 1px solid #333;
+  padding: 1.5rem 1rem;
+}
+
+.logo {
+  font-size: 1.75rem;
+  font-weight: bold;
+  padding: 0 0.5rem 1.5rem 0.5rem; /* Padding inferior para separar */
+  color: #E9ECEF;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #999;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.navLink:hover {
+  background-color: #333;
+  color: #E9ECEF;
+}
+
+.navLinkActive {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Perfil do Usuário na parte de baixo */
+.profileSection {
+  border-top: 1px solid #333;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.profileInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+.profileAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #007bff; /* Um avatar placeholder */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  color: white;
+}
+
+.profileName {
+  font-weight: 500;
+  color: #E9ECEF;
+
+  /* Para evitar que nomes longos quebrem o layout */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profileActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.actionButton {
+  width: 100%;
+  background: none;
+  border: 1px solid #444;
+  color: #999;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.actionButton:hover {
+  background-color: #333;
+  color: #E9ECEF;
+}
+
+.actionButton:disabled {
+  color: #666;
+  cursor: not-allowed;
+  background-color: #222;
+}
+
+.logoutButton {
+  width: 100%;
+  background: none;
+  border: 1px solid #444;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  border-color: #ff4d4d;
+  color: #ff4d4d;
+}
+.logoutButton:hover {
+  background-color: rgba(255, 77, 77, 0.1);
+  color: #ff6666;
+}

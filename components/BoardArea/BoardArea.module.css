@@ -1,65 +1,73 @@
 .boardContainer {
-  /* O padding pode vir do layout, mas garantimos aqui */
-  padding: 1rem;
+  padding: 0; /* O padding agora vem do layout */
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- CABEÇALHO DO BOARD --- */
+.boardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem; /* Espaço entre o header e as colunas */
 }
 
 .boardTitle {
   font-size: 2rem;
   font-weight: bold;
-  margin-bottom: 1.5rem;
+  margin: 0; /* Remove margin-bottom antiga */
 }
 
-.columnsWrapper {
-  /* --- ESTA É A CORREÇÃO PRINCIPAL --- */
+.boardControls {
+  display: flex;
+  gap: 0.75rem;
+}
 
+.primaryButton {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.primaryButton:hover {
+  background-color: #0056b3;
+}
+/* --- FIM DO CABEÇALHO --- */
+
+
+/* --- ESTE É O SELETOR QUE CORRIGE O LAYOUT --- */
+.columnsWrapper {
   /* 1. Define o layout como flexível */
   display: flex;
-
   /* 2. Garante que a direção seja horizontal (lado a lado) */
   flex-direction: row;
-
   /* 3. Permite rolagem horizontal se as colunas estourarem a tela */
   overflow-x: auto;
   overflow-y: hidden; /* Evita rolagem vertical desnecessária no wrapper */
-
   /* 4. Alinha as colunas no topo */
   align-items: flex-start;
-
   /* 5. Dá um espaçamento entre as colunas */
   gap: 1rem;
-
-  /* 6. Define a aparência e a altura mínima do wrapper */
-  min-height: 70vh; /* Garante que o wrapper tenha altura */
+  
+  /* 6. Define a aparência e a altura */
+  flex-grow: 1; /* Ocupa o espaço vertical restante */
   padding: 1rem;
   background-color: #2a2b2d;
   border-radius: 8px;
 }
+/* --- FIM DA CORREÇÃO --- */
 
-.addNewColumnButton {
-  /* 7. Garante que o botão não seja "esmagado" pelo flex */
-  flex-shrink: 0;
 
-  min-width: 280px;
-  height: 50px;
-  border-radius: 8px;
-  background-color: #2a2b2d;
-  border: 2px dashed #555;
-  color: #999;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: bold;
-  transition: all 0.2s ease;
-}
+/* ... (estilos de confirmação e loading) ... */
 
-.addNewColumnButton:hover {
-  background-color: #333;
-  color: #E9ECEF;
-  border-color: #777;
-}
-
-/* ... (estilos existentes) ... */
-
-/* Estilos para o conteúdo do Modal de Confirmação */
 .confirmationContent {
   display: flex;
   flex-direction: column;

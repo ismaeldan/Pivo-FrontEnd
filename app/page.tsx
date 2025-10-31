@@ -47,7 +47,7 @@ export default function LoginPage() {
     onSuccess: (data) => {
       localStorage.setItem('access_token', data.access_token);
       queryClient.invalidateQueries({ queryKey: ['authMe'] });
-      router.push('/home');
+      router.push('/board');
     },
     onError: (error) => {
       console.error('Erro no login:', error.message);
