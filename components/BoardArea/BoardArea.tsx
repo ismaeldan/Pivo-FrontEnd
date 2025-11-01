@@ -12,7 +12,6 @@ import {
   PointerSensor, 
   useSensor, 
   useSensors,
-  DragOverEvent 
 } from '@dnd-kit/core';
 import TaskCard from '../TaskCard/TaskCard';
 import { 
@@ -24,11 +23,11 @@ import Modal from '../Modal/Modal';
 import AddColumnForm from '../AddColumnForm/AddColumnForm';
 import AddTaskForm, { AddTaskData } from '../AddTaskForm/AddTaskForm';
 import EditTaskModal, { EditTaskData } from '../EditTaskModal/EditTaskModal';
-import { useBoard } from '@/hooks/useBoard';
+import { useBoard } from '@/hooks/useBoard'; 
+import { useDebounce } from '@/hooks/useDebounce';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
-// --- Tipos para os Modais ---
 type ModalType = 
   | null
   | { type: 'addColumn' }
@@ -37,16 +36,14 @@ type ModalType =
 type ConfirmationModalData = 
   | null
   | { type: 'task', id: string, name: string }
-  | { type: 'column', id: string, name: string }; 
-// --- Fim dos Tipos ---
+  | { type: 'column', id: string, name: string };
 
-
-// --- Definições de Payload da API ---
 interface CreateTaskPayload {
   title: string;
   columnId: string;
   description?: string | null; 
   status?: string;
+  order?: number;
 }
 
 interface CreateTaskResponse extends Task {}
@@ -62,6 +59,11 @@ interface UpdateTaskPayload {
   }
 }
 
+interface CreateColumnPayload {
+  title: string;
+  order?: number;
+}
+
 interface UpdateColumnPayload {
   columnId: string;
   data: {
@@ -69,12 +71,7 @@ interface UpdateColumnPayload {
     order?: number;
   }
 }
-// --- Fim dos Payloads ---
 
-
-// --- Funções da API (Definidas fora do componente) ---
-
-// POST /tasks
 const createTaskOnAPI = async (payload: CreateTaskPayload): Promise<CreateTaskResponse> => {
   const response = await apiClient('/tasks', {
     method: 'POST',
@@ -84,7 +81,6 @@ const createTaskOnAPI = async (payload: CreateTaskPayload): Promise<CreateTaskRe
   return response.json();
 };
 
-// PATCH /tasks/:taskId
 const updateTaskOnAPI = async ({ taskId, data }: UpdateTaskPayload) => {
   const response = await apiClient(`/tasks/${taskId}`, {
     method: 'PATCH',
@@ -94,7 +90,6 @@ const updateTaskOnAPI = async ({ taskId, data }: UpdateTaskPayload) => {
   return response.json();
 };
 
-// DELETE /tasks/:taskId
 const deleteTaskOnAPI = async (taskId: string) => {
   const response = await apiClient(`/tasks/${taskId}`, {
     method: 'DELETE',
@@ -105,8 +100,7 @@ const deleteTaskOnAPI = async (taskId: string) => {
   return { success: true };
 };
 
-// POST /columns
-const createColumnOnAPI = async (payload: { title: string }) => {
+const createColumnOnAPI = async (payload: CreateColumnPayload) => {
   const response = await apiClient('/columns', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -115,7 +109,6 @@ const createColumnOnAPI = async (payload: { title: string }) => {
   return response.json();
 };
 
-// PATCH /columns/:columnId
 const updateColumnTitleOnAPI = async ({ columnId, data }: UpdateColumnPayload) => {
   const response = await apiClient(`/columns/${columnId}`, {
     method: 'PATCH',
@@ -125,7 +118,6 @@ const updateColumnTitleOnAPI = async ({ columnId, data }: UpdateColumnPayload) =
   return response.json();
 };
 
-// DELETE /columns/:columnId
 const deleteColumnOnAPI = async (columnId: string) => {
   const response = await apiClient(`/columns/${columnId}`, {
     method: 'DELETE',
@@ -135,37 +127,48 @@ const deleteColumnOnAPI = async (columnId: string) => {
   }
   return { success: true };
 };
-// --- Fim das Funções da API ---
 
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Todos os Status' },
+  { value: 'pending', label: 'Pendente' },
+  { value: 'in_progress', label: 'Em Progresso' },
+  { value: 'completed', label: 'Concluído' },
+];
 
 export default function BoardArea() {
   const [columns, setColumns] = useState<ColumnType[]>([]); 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
-  // Removido 'originalColumn' pois a nova lógica não precisa dele
   const [confirmationModalData, setConfirmationModalData] = useState<ConfirmationModalData>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   const queryClient = useQueryClient();
-
-  // --- Hooks do React Query ---
-
+  
   const { 
     data: columnsFromAPI, 
     isLoading: isLoadingBoard,
     isError: isErrorBoard 
-  } = useBoard();
-
+  } = useBoard({
+    status: statusFilter, 
+    q: debouncedSearchQuery || undefined,
+  });
+  
   useEffect(() => {
     if (columnsFromAPI) {
       setColumns(columnsFromAPI); 
     }
   }, [columnsFromAPI]);
-
+  
   const createTaskMutation = useMutation({
     mutationFn: createTaskOnAPI,
-    onError: (error) => console.error("Erro ao criar tarefa:", error),
+    onError: (error) => {
+      console.error("Erro ao criar tarefa:", error);
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+    },
   });
 
   const updateTaskMutation = useMutation({
@@ -176,21 +179,17 @@ export default function BoardArea() {
     },
     onError: (error: Error) => {
       console.error("Erro ao atualizar tarefa:", error);
-      // Exibe o alerta de erro
       alert(`Erro ao mover/atualizar: ${error.message}. Revertendo.`);
-      // Força a reversão da UI otimista buscando os dados do servidor
       queryClient.invalidateQueries({ queryKey: ['board'] }); 
     }
   });
 
   const createColumnMutation = useMutation({
     mutationFn: createColumnOnAPI,
-    onSuccess: (newColumnData) => {
-      // Adicionada lógica para lidar com criação de tarefas
+    onError: (error) => {
+      console.error("Erro ao criar coluna:", error);
       queryClient.invalidateQueries({ queryKey: ['board'] });
-      closeModal();
     },
-    onError: (error) => console.error("Erro ao criar coluna:", error),
   });
 
   const updateColumnMutation = useMutation({
@@ -226,48 +225,47 @@ export default function BoardArea() {
     }
   });
 
-  // --- Fim dos Hooks ---
-
   const columnIds = useMemo(() => columns.map(col => col.id), [columns]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 10 },
     })
   );
-
-  // --- FUNÇÕES DE CRUD (Conectadas às Mutações) ---
   
   function handleCreateColumn(title: string, taskContents: string[]) {
     const hasTasks = taskContents.length > 0;
+    
+    const newOrder = columns.length; 
 
     createColumnMutation.mutate(
-      { title: title },
+      { title: title, order: newOrder },
       {
         onSuccess: (newColumnData) => {
+          
           const newColumnId = (newColumnData as ColumnType).id;
-
+          
           if (hasTasks && newColumnId) {
-            const taskCreationPromises = taskContents.map(taskTitle => 
+            const taskCreationPromises = taskContents.map((taskTitle, index) => 
               createTaskMutation.mutateAsync({ 
                 title: taskTitle,
                 description: null,
                 status: 'pending', 
                 columnId: newColumnId,
+                order: index,
               })
             );
+            
             Promise.all(taskCreationPromises)
-              .finally(() => { 
+              .finally(() => {
                 queryClient.invalidateQueries({ queryKey: ['board'] });
                 closeModal();
               });
           } else {
+            
             queryClient.invalidateQueries({ queryKey: ['board'] });
             closeModal();
           }
         },
-        onError: (error) => {
-          console.error("Falha ao criar a coluna (etapa 1):", error);
-        }
       }
     );
   }
@@ -278,6 +276,7 @@ export default function BoardArea() {
       description: data.description,
       status: data.status,
       columnId: columnId,
+      
     }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['board'] });
@@ -322,12 +321,9 @@ export default function BoardArea() {
       data: { title: newTitle }
     });
   }
-
   
-  // --- FUNÇÕES DO DND-KIT ---
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
-    // CORREÇÃO: Adiciona verificação se 'task' ou 'column' existem
     if (active.data.current?.type === 'Task' && active.data.current.task) {
       setActiveTask(active.data.current.task as Task);
       return;
@@ -338,22 +334,15 @@ export default function BoardArea() {
     }
   }
 
-  //
-  // --- FUNÇÃO handleDragEnd TOTALMENTE CORRIGIDA ---
-  //
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
-    // 1. Limpa estados de "arrasto"
     setActiveTask(null);
     setActiveColumn(null);
-    // (originalColumn não é mais necessário)
 
-    // 2. Condições de saída
-    if (!over) return; // Soltou fora de uma zona válida
-    if (active.id === over.id) return; // Soltou no mesmo lugar
-
-    // --- LÓGICA DE ARRASTAR COLUNA ---
+    if (!over) return;
+    if (active.id === over.id) return;
+    
     const isActiveColumn = active.data.current?.type === 'Column';
     if (isActiveColumn) {
       const activeColumnIndex = columns.findIndex(col => col.id === active.id);
@@ -361,81 +350,65 @@ export default function BoardArea() {
 
       if (activeColumnIndex !== -1 && overColumnIndex !== -1 && activeColumnIndex !== overColumnIndex) {
         
-        // A. Atualização Otimista (Visual)
         setColumns(prevColumns => {
           return arrayMove(prevColumns, activeColumnIndex, overColumnIndex);
         });
-
-        // B. Chamada de API (Backend)
+        
         updateColumnMutation.mutate({
           columnId: active.id as string,
-          data: { order: overColumnIndex }
+          data: { order: overColumnIndex } 
         });
       }
-      return; // Finaliza a função
+      return;
     }
-
-
-    // --- LÓGICA DE ARRASTAR TAREFA ---
-    // CORREÇÃO: Verifica se a task existe em active.data.current
+    
     const isActiveTask = active.data.current?.type === 'Task';
     if (isActiveTask && active.data.current?.task) {
       
       const taskToMove = active.data.current.task as Task;
 
-      // A. Encontrar coluna de ORIGEM
       const activeColumn = columns.find(col => 
         col.tasks.some(task => task.id === active.id)
       );
-      if (!activeColumn) return; // Failsafe
+      if (!activeColumn) return;
       const activeIndex = activeColumn.tasks.findIndex(t => t.id === active.id);
 
-
-      // B. Encontrar coluna de DESTINO e ÍNDICE
-      //    Esta é a correção principal
       let targetColumnId: string;
       let targetIndex: number;
-
-      // Cenário 1: Soltou sobre uma TAREFA
+      
       if (over.data.current?.type === 'Task') {
         const overTaskColumn = columns.find(col => col.tasks.some(t => t.id === over.id));
-        if (!overTaskColumn) return; // Failsafe
+        if (!overTaskColumn) return;
         
-        targetColumnId = overTaskColumn.id; // <-- ID da COLUNA da tarefa
+        targetColumnId = overTaskColumn.id;
         targetIndex = overTaskColumn.tasks.findIndex(t => t.id === over.id);
       } 
-      // Cenário 2: Soltou sobre uma COLUNA
+      
       else if (over.data.current?.type === 'Column') {
-        targetColumnId = over.id as string; // <-- ID da COLUNA
+        targetColumnId = over.id as string;
         const overColumn = columns.find(col => col.id === targetColumnId);
-        if (!overColumn) return; // Failsafe
+        if (!overColumn) return;
         
         targetIndex = overColumn.tasks.length; // Adiciona ao final
       } 
-      // Cenário 3: Alvo inválido
       else {
-        console.error("Alvo de drop desconhecido:", over);
         return;
       }
       
-      // C. Verificar se algo realmente mudou
       if (activeColumn.id === targetColumnId && activeIndex === targetIndex) {
         return;
       }
       
-      // D. Atualização Otimista (Visual)
       setColumns((prev) => {
         const prevActiveCol = prev.find(c => c.id === activeColumn.id);
         const prevTargetCol = prev.find(c => c.id === targetColumnId);
 
-        if (!prevActiveCol || !prevTargetCol) return prev; // Failsafe
+        if (!prevActiveCol || !prevTargetCol) return prev;
 
-        // Mesma coluna (Reordenação)
         if (prevActiveCol.id === prevTargetCol.id) {
           const newTasks = arrayMove(prevActiveCol.tasks, activeIndex, targetIndex);
           return prev.map(c => c.id === prevActiveCol.id ? {...c, tasks: newTasks} : c);
         } 
-        // Colunas diferentes (Movimentação)
         else {
           const newActiveTasks = prevActiveCol.tasks.filter(t => t.id !== active.id);
           const newTargetTasks = [...prevTargetCol.tasks];
@@ -448,9 +421,7 @@ export default function BoardArea() {
           });
         }
       });
-
-      // E. Chamada de API (Backend)
-      //    Agora 'targetColumnId' é garantido ser um UUID de coluna.
+      
       updateTaskMutation.mutate({
           taskId: active.id as string,
           data: {
@@ -460,9 +431,7 @@ export default function BoardArea() {
       });
     }
   }
-
-
-  // --- FUNÇÕES DO MODAL ---
+  
   const openAddColumnModal = () => setActiveModal({ type: 'addColumn' });
   const openAddTaskModal = (columnId: string) => setActiveModal({ type: 'addTask', columnId });
   const closeModal = () => setActiveModal(null);
@@ -495,12 +464,11 @@ export default function BoardArea() {
     
     setConfirmationModalData(null);
   };
-
-  // --- RENDER ---
-
+  
   if (isLoadingBoard && columns.length === 0) {
     return <div className={styles.boardLoading}>Carregando seu board...</div>;
   }
+  
   if (isErrorBoard && columns.length === 0) {
     return <div className={styles.boardError}>Houve um erro ao carregar o board.</div>;
   }
@@ -513,12 +481,39 @@ export default function BoardArea() {
     >
       <div className={styles.boardContainer}>
         
-        {/* Header do Board */}
         <div className={styles.boardHeader}>
           <h1 className={styles.boardTitle}>Board</h1>
           
           <div className={styles.boardControls}>
-            {/* TODO: Adicionar SearchBar e Filtros aqui */}
+            
+            <div className={styles.filterGroup}>
+              <label htmlFor="status-filter">Filtrar por:</label>
+              <select
+                id="status-filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className={styles.select}
+              >
+                {STATUS_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className={styles.searchGroup}>
+              <label htmlFor="search-tasks">Buscar:</label>
+              <input
+                id="search-tasks"
+                type="text"
+                placeholder="Buscar por título..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={styles.input}
+              />
+            </div>
+            
             <button 
               onClick={openAddColumnModal} 
               className={styles.primaryButton}
@@ -528,7 +523,6 @@ export default function BoardArea() {
           </div>
         </div>
         
-        {/* Contêiner das Colunas */}
         <div className={styles.columnsWrapper}>
           <SortableContext 
             items={columnIds} 
@@ -570,8 +564,7 @@ export default function BoardArea() {
           />
         )}
       </DragOverlay>
-
-      {/* Modal de Adicionar Coluna/Tarefa */}
+      
       <Modal 
         isOpen={!!activeModal} 
         onClose={closeModal}
@@ -596,8 +589,7 @@ export default function BoardArea() {
           />
         )}
       </Modal>
-
-      {/* Modal de Confirmação de Exclusão */}
+      
       <Modal
         isOpen={!!confirmationModalData}
         onClose={cancelDeletion}
@@ -609,7 +601,6 @@ export default function BoardArea() {
               Tem certeza que deseja excluir 
               <strong> "{confirmationModalData.name}"</strong>?
             </p>
-            {/* CORREÇÃO: Trocado </a> por </p> */}
             {confirmationModalData.type === 'column' && (
               <p className={styles.warningText}>
                 (Todas as tarefas dentro desta coluna também serão excluídas!)
@@ -636,8 +627,7 @@ export default function BoardArea() {
           </div>
         )}
       </Modal>
-
-      {/* Modal de Editar Tarefa */}
+      
       {editingTask && (
         <EditTaskModal
           isOpen={!!editingTask}

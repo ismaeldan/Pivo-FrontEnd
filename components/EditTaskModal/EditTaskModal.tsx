@@ -5,28 +5,25 @@ import Modal from '../Modal/Modal';
 import { Task } from '@/types';
 import styles from './EditTaskModal.module.css';
 
-// 1. Define os tipos de status permitidos (para o dropdown)
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pendente' },
   { value: 'in_progress', label: 'Em Progresso' },
   { value: 'completed', label: 'Concluído' },
 ];
 
-// 2. Define os dados que o modal pode atualizar
 export interface EditTaskData {
   title: string;
   description: string | null;
   status: string;
-  moveToTop: boolean; // <-- NOSSA NOVA PROPRIEDADE
+  moveToTop: boolean;
 }
 
 interface EditTaskModalProps {
-  task: Task; // A tarefa que estamos editando
+  task: Task;
   isOpen: boolean;
   onClose: () => void;
-  // 3. A função onSave recebe os dados atualizados
   onSave: (data: EditTaskData) => void; 
-  isPending: boolean; // Para desabilitar o form enquanto salva
+  isPending: boolean;
 }
 
 export default function EditTaskModal({ 
@@ -37,21 +34,19 @@ export default function EditTaskModal({
   isPending
 }: EditTaskModalProps) {
   
-  // 4. Estados locais para o formulário
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [status, setStatus] = useState(task.status);
-  const [moveToTop, setMoveToTop] = useState(false); // <-- NOSSO NOVO ESTADO
-
-  // 5. Garantir que o estado do formulário resete se a task (prop) mudar
+  const [moveToTop, setMoveToTop] = useState(false);
+  
   useEffect(() => {
     if (task) {
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
-      setMoveToTop(false); // <-- Resetar o checkbox
+      setMoveToTop(false);
     }
-  }, [task]); // Depende da 'task' que vem das props
+  }, [task]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -59,18 +54,16 @@ export default function EditTaskModal({
 
     onSave({
       title: title.trim(),
-      description: description.trim() || null, // Envia null se estiver vazio
+      description: description.trim() || null,
       status: status,
-      moveToTop: moveToTop, // <-- Envia o valor do checkbox
+      moveToTop: moveToTop,
     });
   };
-
-  // 6. Usar <Modal> como wrapper
+  
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Editar Tarefa">
       <form onSubmit={handleSubmit} className={styles.form}>
         
-        {/* Título */}
         <div className={styles.formGroup}>
           <label htmlFor="edit-title">Título</label>
           <input
@@ -83,8 +76,7 @@ export default function EditTaskModal({
             autoFocus
           />
         </div>
-
-        {/* Descrição */}
+        
         <div className={styles.formGroup}>
           <label htmlFor="edit-description">Descrição</label>
           <textarea
@@ -97,8 +89,7 @@ export default function EditTaskModal({
             disabled={isPending}
           />
         </div>
-
-        {/* Status */}
+        
         <div className={styles.formGroup}>
           <label htmlFor="edit-status">Status</label>
           <select
@@ -115,8 +106,7 @@ export default function EditTaskModal({
             ))}
           </select>
         </div>
-
-        {/* --- NOVO CHECKBOX --- */}
+        
         <div className={styles.checkboxGroup}>
           <input 
             type="checkbox" 
@@ -128,10 +118,7 @@ export default function EditTaskModal({
           />
           <label htmlFor="move-to-top">Mover para o topo da coluna</label>
         </div>
-        {/* --- FIM DO CHECKBOX --- */}
-
-
-        {/* Botões */}
+        
         <div className={styles.buttonGroup}>
           <button type="button" onClick={onClose} className={styles.cancelButton} disabled={isPending}>
             Cancelar

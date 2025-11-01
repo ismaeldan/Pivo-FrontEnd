@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pivô Board (Frontend)
 
-## Getting Started
+Este é o frontend do projeto Pivô, um quadro Kanban completo construído com Next.js, TypeScript e React Query.
 
-First, run the development server:
+O projeto se conecta a um [backend NestJS](https://github.com/ismaeldan/Pivo-BackEnd) para gerenciamento de usuários, colunas e tarefas, incluindo uma robusta lógica de reordenação em tempo real.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tecnologias Principais
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+* **Framework:** Next.js (App Router)
+* **Linguagem:** TypeScript
+* **Gerenciamento de Estado de API:** TanStack (React) Query
+* **Drag and Drop:** @dnd-kit (Core & Sortable)
+* **Autenticação:** Gerenciamento de sessão via Context API (`AuthProvider`)
+* **Estilização:** CSS Modules
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Funcionalidades
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Autenticação e Usuário
+* **Criação de Conta:** Página de cadastro (`/signup`) que cria um novo usuário no backend (nome, email, senha).
+* **Login de Usuário:** Página de login (`/`) que autentica o usuário e armazena o JWT no `localStorage`.
+* **Gerenciamento de Perfil:** Um modal "Editar Perfil" (acessível pela Sidebar) permite ao usuário logado:
+    * Atualizar nome e email.
+    * Atualizar a senha com validação em tempo real (8 caracteres e confirmação de senha).
+* **Sessão Persistente:** O `AuthProvider` busca os dados do usuário (`/users/me`) em toda a aplicação, garantindo que o usuário permaneça logado.
+* **Logout:** Limpa o token do `localStorage` e redireciona para o login.
 
-## Learn More
+### 2. Quadro Kanban (Board)
+* **Busca de Tarefas:** Uma barra de busca no header que filtra o board em tempo real (com *debounce*).
+* **Filtro por Status:** Um dropdown no header permite filtrar as tarefas por status (Pendente, Em Progresso, Concluído).
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Colunas
+* **CRUD Completo:**
+    * **Criar:** Adiciona novas colunas. Permite adicionar tarefas no momento da criação da coluna.
+    * **Ler:** Busca todas as colunas e suas tarefas aninhadas.
+    * **Editar:** Permite editar o título da coluna com um duplo-clique.
+    * **Deletar:** Exclui colunas (e todas as suas tarefas) com um modal de confirmação.
+* **Reordenação (Drag and Drop):**
+    * As colunas podem ser arrastadas e reordenadas horizontalmente.
+    * A ordem é salva no backend, garantindo persistência.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Tarefas
+* **CRUD Completo:**
+    * **Criar:** Adiciona novas tarefas (título, descrição, status) dentro de uma coluna específica.
+    * **Ler:** As tarefas são carregadas dentro de suas respectivas colunas.
+    * **Editar:** Um modal (`EditTaskModal`) permite alterar título, descrição, status e mover a task para o topo da coluna.
+    * **Deletar:** Exclui tarefas com um modal de confirmação.
+* **Reordenação (Drag and Drop):**
+    * As tarefas podem ser reordenadas *dentro* da mesma coluna.
+    * As tarefas podem ser movidas *entre* colunas.
+    * Toda reordenação é otimista (atualiza a UI instantaneamente) e persistida no backend.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Como Rodar o Projeto
 
-## Deploy on Vercel
+1.  **Clone o repositório**
+    ```bash
+    git clone [URL_DO_SEU_REPOSITORIO_FRONTEND]
+    cd [pasta-do-frontend]
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2.  **Instale as dependências**
+    (O projeto usa `pnpm`)
+    ```bash
+    pnpm install
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3.  **Configuração de Ambiente**
+    * *Este projeto não requer um `.env` local, pois se conecta diretamente à URL da API definida no `lib/apiClient.ts`.*
+
+4.  **Rode o Backend**
+    * Certifique-se de que o projeto [Pivo-BackEnd](https://github.com/ismaeldan/Pivo-BackEnd) esteja rodando em `http://localhost:3100`.
+
+5.  **Rode o Servidor de Desenvolvimento**
+    ```bash
+    pnpm run dev
+    ```
+
+Abra [http://localhost:3000](http://localhost:3000) no seu navegador.

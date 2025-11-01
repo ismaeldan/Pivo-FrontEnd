@@ -1,7 +1,6 @@
-// Em app/(logged)/layout.tsx
 "use client"; 
 
-import Sidebar from '@/components/Sidebar/Sidebar'; // <-- MUDANÇA AQUI
+import Sidebar from '@/components/Sidebar/Sidebar';
 import styles from './LoggedLayout.module.css';
 import { useAuth } from '@/components/AuthProvider'; 
 import { useRouter } from 'next/navigation'; 
@@ -31,7 +30,6 @@ export default function LoggedLayout({
 
   if (isAuthenticated) {
     return (
-      // O container agora tem a classe 'appLayout'
       <div className={styles.appLayout}> 
         <Sidebar /> 
         <main className={styles.mainContent}>

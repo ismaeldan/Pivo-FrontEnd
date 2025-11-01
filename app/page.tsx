@@ -5,7 +5,7 @@ import styles from './Login.module.css';
 import { useState, FormEvent } from 'react'; 
 import { useMutation, useQueryClient } from '@tanstack/react-query'; 
 import { useRouter } from 'next/navigation'; 
-import Link from 'next/link'; // <-- 1. IMPORTE O LINK
+import Link from 'next/link';
 
 interface LoginCredentials {
   email: string;
@@ -105,13 +105,11 @@ export default function LoginPage() {
         >
           {mutation.isPending ? 'Entrando...' : 'Entrar'}
         </button>
-
-        {/* --- 2. ADICIONE ESTE BLOCO --- */}
+        
         <div className={styles.signupLink}>
           Não tem uma conta? <Link href="/signup">Crie uma</Link>
         </div>
-        {/* --- FIM DO BLOCO --- */}
-        
+                
       </form>
     </div>
   );

@@ -1,7 +1,7 @@
 .formContainer {
   display: flex;
   flex-direction: column;
-  gap: 1rem; /* Aumenta o espaçamento */
+  gap: 1rem;
   min-width: 280px;
 }
 
@@ -9,7 +9,7 @@
   font-size: 0.9rem;
   font-weight: bold;
   color: #ccc;
-  margin-bottom: -0.5rem; /* Aproxima do input */
+  margin-bottom: -0.5rem;
 }
 
 .input {
@@ -22,15 +22,13 @@
   outline: none;
 }
 
-/* --- NOVOS ESTILOS --- */
-
 .taskList {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 150px; /* Limita a altura da lista */
+  max-height: 150px;
   overflow-y: auto;
-  background-color: #1E1F21; /* Fundo escuro */
+  background-color: #1E1F21;
   border-radius: 4px;
   padding: 0.5rem;
 }
@@ -76,12 +74,11 @@
   background-color: #555;
   color: white;
 }
-/* --- FIM DOS NOVOS ESTILOS --- */
 
 .buttonGroup {
   display: flex;
   gap: 0.5rem;
-  margin-top: 1rem; /* Espaço acima dos botões */
+  margin-top: 1rem;
 }
 
 .saveButton {
@@ -89,7 +86,7 @@
   border: none;
   background-color: #007bff;
   color: white;
-  padding: 0.75rem; /* Botão maior */
+  padding: 0.75rem;
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;

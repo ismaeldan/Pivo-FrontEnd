@@ -3,12 +3,11 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  /* O body já tem o fundo escuro, mas garantimos aqui */
   background-color: #1E1F21; 
 }
 
 .loginBox {
-  background-color: #2a2b2d; /* Um pouco mais claro */
+  background-color: #2a2b2d;
   padding: 2rem;
   border-radius: 8px;
   text-align: center;
@@ -46,8 +45,8 @@
 }
 
 .errorMessage {
-  color: #ff4d4d; /* Vermelho para erros */
-  background-color: rgba(255, 77, 77, 0.1); /* Fundo sutil */
+  color: #ff4d4d;
+  background-color: rgba(255, 77, 77, 0.1);
   border: 1px solid #ff4d4d;
   border-radius: 4px;
   padding: 0.75rem;
@@ -56,7 +55,6 @@
   text-align: center;
 }
 
-/* --- ADICIONE ESTA NOVA CLASSE --- */
 .signupLink {
   margin-top: 1.5rem;
   font-size: 0.9rem;
@@ -71,4 +69,15 @@
 
 .signupLink a:hover {
   text-decoration: underline;
+}
+
+.successMessage {
+  color: #28a745; /* Verde */
+  background-color: rgba(40, 167, 69, 0.1);
+  border: 1px solid #28a745;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  text-align: center;
 }

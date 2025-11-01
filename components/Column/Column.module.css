@@ -1,32 +1,23 @@
 .column {
-  /* Layout e Tamanho */
   flex: 1; 
   flex-basis: 300px; 
   min-width: 300px; 
-  max-width: 320px; 
-  
-  /* Estrutura Flex Interna (Empilhar verticalmente) */
+  max-width: 320px;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem; /* Espaço entre título, container e botão */
-
-  /* Estilo */
+  gap: 0.75rem;
   background-color: #1A1B1D; 
   border-radius: 8px;
   padding: 1rem;
-  
-  /* Para a coluna não esticar verticalmente com a tela */
   height: fit-content; 
 }
 
 .columnOver {
-  /* Estilo quando uma tarefa está sendo arrastada por cima */
   background-color: #2a2b2d; 
   border: 2px dashed #007bff; 
 }
 
 .columnDraggingPlaceholder {
-  /* Placeholder da coluna (quando a coluna inteira está sendo arrastada) */
   flex-basis: 300px;
   min-width: 300px;
   border-radius: 8px;
@@ -35,39 +26,37 @@
   border: 2px dashed #444;
 }
 
-/* Container para o título e botão de deletar */
 .columnHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* Espaço adicionado abaixo do header */
   margin-bottom: 0.5rem; 
 }
 
-/* Ajuste no título */
 .columnTitle {
   font-size: 1.2rem;
   font-weight: bold;
   color: #E9ECEF;
-  padding: 0.5rem; /* Mantém um padding para área clicável */
+  padding: 0.5rem;
   border-radius: 4px;
-  flex-grow: 1; /* Ocupa espaço disponível */
-  cursor: grab; 
-  /* Evita seleção de texto ao arrastar */
+  flex-grow: 1;
+  cursor: grab;
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
 }
+
 .columnTitle:hover {
-  background-color: #2a2b2d; /* Feedback sutil no hover */
+  background-color: #2a2b2d;
 }
+
 .columnTitle:active {
   cursor: grabbing;
 }
 
 .columnTitleInput {
-  width: calc(100% - 30px); /* Deixa espaço para o botão que some */
+  width: calc(100% - 30px); 
   padding: 0.5rem;
   font-size: 1.2rem;
   font-weight: bold;
@@ -78,40 +67,36 @@
   outline: none;
 }
 
-/* Botão de deletar coluna */
 .deleteColumnButton {
   background: none;
   border: none;
   color: #666;
-  font-size: 1.5rem; /* Aumenta o 'X' */
+  font-size: 1.5rem;
   font-weight: bold;
   cursor: pointer;
-  padding: 0 8px; /* Padding horizontal */
+  padding: 0 8px;
   border-radius: 4px;
   line-height: 1;
-  opacity: 0; /* Começa invisível */
+  opacity: 0;
   transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
-/* Mostra o botão quando o mouse está sobre a coluna */
 .column:hover .deleteColumnButton {
   opacity: 1;
 }
 
 .deleteColumnButton:hover {
-  color: #ff4d4d; /* Vermelho */
-  background-color: rgba(255, 77, 77, 0.1); /* Fundo sutil */
+  color: #ff4d4d;
+  background-color: rgba(255, 77, 77, 0.1);
 }
 
 
 .tasksContainer {
-  /* Onde as tarefas ficam */
   flex-grow: 1;      
-  min-height: 50px; /* Reduzido um pouco, mas ainda presente */
-  
+  min-height: 50px;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem; /* Espaço entre os cartões */
+  gap: 0.5rem;
 }
 
 .addNewTaskButton {
@@ -120,7 +105,7 @@
   color: #999;
   border-radius: 8px;
   padding: 0.75rem;
-  margin-top: 0.5rem; /* Espaço acima do botão */
+  margin-top: 0.5rem;
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease;

@@ -5,12 +5,11 @@ import { useAuth } from '../AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react'; // <-- 1. Importar useState
-import { useMutation, useQueryClient } from '@tanstack/react-query'; // <-- 2. Importar hooks
-import { apiClient } from '@/lib/apiClient'; // <-- 3. Importar apiClient
-import EditProfileModal, { EditProfileData } from '../EditProfileModal/EditProfileModal'; // <-- 4. Importar o novo Modal
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/apiClient';
+import EditProfileModal, { EditProfileData } from '../EditProfileModal/EditProfileModal';
 
-// 5. Função da API para (PATCH /users/me)
 const updateUserOnAPI = async (data: EditProfileData) => {
   const response = await apiClient('/users/me', {
     method: 'PATCH',
@@ -22,22 +21,16 @@ const updateUserOnAPI = async (data: EditProfileData) => {
 
 
 export default function Sidebar() {
-  const { user, isLoading } = useAuth(); // 'isLoading' para evitar flicker
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const queryClient = useQueryClient(); // <-- 6. Pegar o QueryClient
-
-  // 7. Estado para controlar o modal
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // 8. Mutação para atualizar o perfil
   const updateProfileMutation = useMutation({
     mutationFn: updateUserOnAPI,
     onSuccess: () => {
-      // 9. MUITO IMPORTANTE: Invalida o cache 'authMe'
-      //    Isso força o AuthProvider a buscar os dados de novo (com o novo nome)
       queryClient.invalidateQueries({ queryKey: ['authMe'] });
-      setIsModalOpen(false); // Fecha o modal
+      setIsModalOpen(false);
     },
     onError: (error) => {
       console.error("Erro ao atualizar perfil:", error);
@@ -47,7 +40,7 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
-    queryClient.invalidateQueries({ queryKey: ['authMe'] }); // Limpa o cache
+    queryClient.invalidateQueries({ queryKey: ['authMe'] });
     router.push('/');
   };
 
@@ -79,11 +72,10 @@ export default function Sidebar() {
           </div>
 
           <div className={styles.profileActions}>
-            {/* 10. Botão agora abre o modal */}
             <button 
               className={styles.actionButton} 
-              onClick={() => setIsModalOpen(true)} // <-- AÇÃO
-              disabled={isLoading || !user} // Desabilita se não estiver carregado
+              onClick={() => setIsModalOpen(true)}
+              disabled={isLoading || !user}
               title="Editar seu perfil"
             >
               Editar Perfil
@@ -96,7 +88,6 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* 11. Renderiza o Modal (ele só é visível se 'isModalOpen' for true) */}
       <EditProfileModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

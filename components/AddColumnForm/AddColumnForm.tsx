@@ -4,45 +4,37 @@ import { useState } from 'react';
 import styles from './AddColumnForm.module.css';
 
 interface AddColumnFormProps {
-  // 1. A assinatura 'onSave' agora envia o título E um array de strings (conteúdo das tarefas)
+  
   onSave: (title: string, taskContents: string[]) => void;
   onCancel: () => void;
   isPending: boolean;
 }
 
 export default function AddColumnForm({ onSave, onCancel, isPending }: AddColumnFormProps) {
-  // Estado para o título da coluna
   const [title, setTitle] = useState('');
+  const [tasks, setTasks] = useState<string[]>([]);
+  const [currentTaskContent, setCurrentTaskContent] = useState('');
   
-  // Estados para a lista de tarefas
-  const [tasks, setTasks] = useState<string[]>([]); // Lista de tarefas a adicionar
-  const [currentTaskContent, setCurrentTaskContent] = useState(''); // O input da tarefa atual
-
-  // Função para adicionar a tarefa atual à lista 'tasks'
   const handleAddTask = () => {
     if (currentTaskContent.trim()) {
       setTasks([...tasks, currentTaskContent.trim()]);
-      setCurrentTaskContent(''); // Limpa o input para a próxima tarefa
+      setCurrentTaskContent('');
     }
   };
-
-  // Salva a coluna inteira
+  
   const handleSaveColumn = () => {
-    // 2. Só salva se o título for preenchido
     if (title.trim() && !isPending) {
       onSave(title.trim(), tasks);
-      // Limpa tudo
       setTitle('');
       setTasks([]);
       setCurrentTaskContent('');
     } else {
-      // (Opcional) Adicionar feedback de erro aqui
       alert('O título da coluna é obrigatório.');
     }
   };
 
   const handleTaskKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Adiciona a tarefa ao pressionar 'Enter'
+    
     if (e.key === 'Enter') {
       e.preventDefault();
       handleAddTask();
@@ -55,7 +47,6 @@ export default function AddColumnForm({ onSave, onCancel, isPending }: AddColumn
   return (
     <div className={styles.formContainer}>
       
-      {/* 1. Input do Título da Coluna */}
       <label htmlFor="col-title" className={styles.label}>Título da Coluna (Obrigatório)</label>
       <input
         id="col-title"
@@ -68,8 +59,7 @@ export default function AddColumnForm({ onSave, onCancel, isPending }: AddColumn
         autoFocus
         disabled={isPending}
       />
-
-      {/* 2. Lista de Tarefas Adicionadas */}
+      
       <label className={styles.label}>Tarefas (Opcional)</label>
       <ul className={styles.taskList}>
         {tasks.map((taskContent, index) => (
@@ -78,8 +68,7 @@ export default function AddColumnForm({ onSave, onCancel, isPending }: AddColumn
           </li>
         ))}
       </ul>
-
-      {/* 3. Input para Adicionar Nova Tarefa */}
+      
       <div className={styles.taskInputGroup}>
         <input
           className={styles.inputTask}
@@ -94,8 +83,7 @@ export default function AddColumnForm({ onSave, onCancel, isPending }: AddColumn
           Adicionar
         </button>
       </div>
-
-      {/* 4. Botões de Ação */}
+      
       <div className={styles.buttonGroup}>
         <button onClick={handleSaveColumn} className={styles.saveButton} disabled={isPending}>
           Salvar Coluna

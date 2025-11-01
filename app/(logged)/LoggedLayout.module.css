@@ -1,14 +1,13 @@
-/* Substitua o .appContainer por .appLayout */
 .appLayout {
   display: flex;
-  flex-direction: row; /* Sidebar ao lado do conteúdo */
+  flex-direction: row;
   min-height: 100vh;
 }
 
 .mainContent {
-  flex-grow: 1; /* Faz o conteúdo principal ocupar o espaço restante */
-  padding: 1.5rem 2rem; /* Aumentei um pouco o padding */
-  overflow-y: auto; /* Permite scroll só no conteúdo, se necessário */
+  flex-grow: 1;
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
 }
 
 .loadingContainer {

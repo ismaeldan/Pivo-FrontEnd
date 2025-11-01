@@ -1,10 +1,9 @@
-/* components/Sidebar/Sidebar.module.css */
 .sidebar {
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Empurra o perfil para baixo */
-  width: 260px; /* Largura da sidebar */
-  flex-shrink: 0; /* Impede que a sidebar encolha */
+  justify-content: space-between;
+  width: 260px;
+  flex-shrink: 0; 
   height: 100vh;
   background-color: #2a2b2d;
   border-right: 1px solid #333;
@@ -14,7 +13,7 @@
 .logo {
   font-size: 1.75rem;
   font-weight: bold;
-  padding: 0 0.5rem 1.5rem 0.5rem; /* Padding inferior para separar */
+  padding: 0 0.5rem 1.5rem 0.5rem;
   color: #E9ECEF;
 }
 
@@ -46,7 +45,6 @@
   color: white;
 }
 
-/* Perfil do Usuário na parte de baixo */
 .profileSection {
   border-top: 1px solid #333;
   padding-top: 1rem;
@@ -65,7 +63,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #007bff; /* Um avatar placeholder */
+  background-color: #007bff;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -76,8 +74,6 @@
 .profileName {
   font-weight: 500;
   color: #E9ECEF;
-
-  /* Para evitar que nomes longos quebrem o layout */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

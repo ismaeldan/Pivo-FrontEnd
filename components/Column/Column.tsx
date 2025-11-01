@@ -8,13 +8,12 @@ import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo, useState, useEffect } from 'react'; 
 
-// Esta interface deve corresponder a todas as props passadas no BoardArea
 interface ColumnProps {
   column: ColumnType;
   activeTask: Task | null;
   onAddTask: (columnId: string) => void; 
   onOpenEditModal: (task: Task) => void; 
-  onUpdateColumnTitle: (id: string, newTitle: string) => void; // A prop que queremos usar
+  onUpdateColumnTitle: (id: string, newTitle: string) => void;
   onRequestDeleteTask: (task: Task) => void; 
   onRequestDeleteColumn: (column: ColumnType) => void;
 }
@@ -24,14 +23,14 @@ export default function Column({
   activeTask, 
   onAddTask, 
   onOpenEditModal,
-  onUpdateColumnTitle, // Recebemos a prop
+  onUpdateColumnTitle,
   onRequestDeleteTask,
   onRequestDeleteColumn
 }: ColumnProps) { 
   
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(column.title);
-  const [mounted, setMounted] = useState(false); // Para correção de hidratação
+  const [mounted, setMounted] = useState(false); 
 
   useEffect(() => {
     setMounted(true);
@@ -47,7 +46,7 @@ export default function Column({
   } = useSortable({
     id: column.id, 
     data: { type: 'Column', column: column, },
-    disabled: !!activeTask || isEditingTitle, // Desabilita DND se estiver editando
+    disabled: !!activeTask || isEditingTitle, 
   });
 
   const { 
@@ -65,22 +64,19 @@ export default function Column({
       setEditedTitle(column.title);
     }
   }, [column.title, isEditingTitle]);
-
-  // Função para salvar o título
+  
   const handleTitleSave = () => {
     if (editedTitle.trim() && editedTitle !== column.title) {
-      // Chama a prop (que chama a mutação no BoardArea)
       onUpdateColumnTitle(column.id, editedTitle); 
     }
-    setIsEditingTitle(false); // Sai do modo de edição
+    setIsEditingTitle(false);
   };
-
-  // Função para salvar com 'Enter' ou cancelar com 'Escape'
+  
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleTitleSave();
     } else if (e.key === 'Escape') {
-      setEditedTitle(column.title); // Reverte
+      setEditedTitle(column.title);
       setIsEditingTitle(false);
     }
   };
@@ -111,23 +107,20 @@ export default function Column({
     >
       <div className={styles.columnHeader}>
         {isEditingTitle ? (
-          // MODO DE EDIÇÃO
+
           <input 
             className={styles.columnTitleInput}
             value={editedTitle}
             onChange={(e) => setEditedTitle(e.target.value)}
-            // --- ESTAS SÃO AS LINHAS CRÍTICAS ---
-            onBlur={handleTitleSave} // Salva quando clica fora
-            onKeyDown={handleTitleKeyDown} // Salva com 'Enter'
-            // --- FIM DAS LINHAS CRÍTICAS ---
+            onBlur={handleTitleSave}
+            onKeyDown={handleTitleKeyDown}
             autoFocus
           />
         ) : (
-          // MODO DE VISUALIZAÇÃO
           <h2 
             {...(mounted ? { ...attributes, ...listeners } : {})} 
             className={styles.columnTitle}
-            onDoubleClick={() => setIsEditingTitle(true)} // Entra no modo de edição
+            onDoubleClick={() => setIsEditingTitle(true)}
           >
             {column.title}
           </h2>

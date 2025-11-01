@@ -3,14 +3,12 @@
 import { useState, FormEvent } from 'react';
 import styles from './AddTaskForm.module.css';
 
-// 1. Tipos de Status (igual ao EditTaskModal)
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pendente' },
   { value: 'in_progress', label: 'Em Progresso' },
   { value: 'completed', label: 'Concluído' },
 ];
 
-// 2. Define a estrutura dos dados que o onSave enviará
 export interface AddTaskData {
   title: string;
   description: string | null;
@@ -18,21 +16,18 @@ export interface AddTaskData {
 }
 
 interface AddTaskFormProps {
-  // 3. onSave agora envia um objeto AddTaskData
   onSave: (data: AddTaskData) => void; 
   onCancel: () => void;
   isPending: boolean;
 }
 
 export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskFormProps) {
-  
-  // 4. Estados para os novos campos
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('pending'); // Default para 'pending'
+  const [status, setStatus] = useState('pending');
 
   const handleSave = (e: FormEvent) => {
-    e.preventDefault(); // É um formulário agora
+    e.preventDefault();
     
     if (title.trim() && !isPending) {
       onSave({
@@ -40,7 +35,6 @@ export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskForm
         description: description.trim() || null,
         status: status,
       });
-      // Limpa o form
       setTitle('');
       setDescription('');
       setStatus('pending');
@@ -48,10 +42,7 @@ export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskForm
   };
 
   return (
-    // 5. Atualiza o JSX para ser um formulário completo
     <form onSubmit={handleSave} className={styles.formContainer}>
-      
-      {/* Título */}
       <div className={styles.formGroup}>
         <label htmlFor="add-title">Título (Obrigatório)</label>
         <input
@@ -64,8 +55,6 @@ export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskForm
           autoFocus
         />
       </div>
-
-      {/* Descrição */}
       <div className={styles.formGroup}>
         <label htmlFor="add-description">Descrição</label>
         <textarea
@@ -78,8 +67,6 @@ export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskForm
           disabled={isPending}
         />
       </div>
-
-      {/* Status */}
       <div className={styles.formGroup}>
         <label htmlFor="add-status">Status Inicial</label>
         <select
@@ -96,8 +83,6 @@ export default function AddTaskForm({ onSave, onCancel, isPending }: AddTaskForm
           ))}
         </select>
       </div>
-
-      {/* Botões */}
       <div className={styles.buttonGroup}>
         <button type="button" onClick={onCancel} className={styles.cancelButton} disabled={isPending}>
           Cancelar

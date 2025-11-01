@@ -1,25 +1,24 @@
 .taskCard {
-  position: relative; /* Necessário para o botão absoluto */
+  position: relative;
   background-color: #333;
-  padding: 0.75rem 1rem; /* Ajuste no padding */
+  padding: 0.75rem 1rem;
   border-radius: 8px;
   border: 1px solid #444;
-  /* Adiciona um cursor padrão para indicar interatividade */
   cursor: grab; 
 }
+
 .taskCard:active {
-  cursor: grabbing; /* Feedback visual ao arrastar */
+  cursor: grabbing;
 }
 
 .taskCardDragging {
-  /* Placeholder do cartão original */
   opacity: 0.4;
-  background-color: #1a1b1d; /* Cor do fundo da coluna */
+  background-color: #1a1b1d;
   border: 2px dashed #444; 
   border-radius: 8px;
-  height: 48px; /* Altura aproximada de um cartão */
+  height: 48px;
   margin-bottom: 0.5rem;
-  box-sizing: border-box; /* Garante que padding/border não aumentem a altura */
+  box-sizing: border-box;
 }
 
 .taskContent {
@@ -29,53 +28,50 @@
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
-  /* Adições: */
   display: flex;
   flex-direction: column;
-  gap: 0.25rem; /* Espaço entre título e descrição */
+  gap: 0.25rem;
 }
 
 .taskInput {
-  width: calc(100% - 24px); /* Subtrai espaço para o botão 'X' */
+  width: calc(100% - 24px);
   padding: 0.5rem;
-  border: 1px solid #007bff; /* Borda azul para destacar */
+  border: 1px solid #007bff;
   border-radius: 4px;
-  background-color: #3f3f3f; /* Um pouco mais claro para diferenciar */
+  background-color: #3f3f3f;
   color: #E9ECEF;
   outline: none;
-  font-family: inherit; /* Usa a mesma fonte do resto */
-  font-size: 0.9rem; /* Tamanho similar ao <p> */
-  box-sizing: border-box; /* Garante padding correto */
+  font-family: inherit;
+  font-size: 0.9rem;
+  box-sizing: border-box;
 }
 
 .taskTitle {
-  font-weight: 500; /* Título um pouco mais forte */
+  font-weight: 500;
   color: #E9ECEF;
   overflow-wrap: break-word;
   word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2; /* Número de linhas para o título */
+  -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
-/* NOVO ESTILO */
 .taskDescription {
-  font-size: 0.8rem; /* Descrição menor */
-  color: #adb5bd; /* Cor mais suave */
+  font-size: 0.8rem;
+  color: #adb5bd;
   overflow-wrap: break-word;
   word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 3; /* Número de linhas para a descrição */
-  line-clamp: 3; /* Propriedade padrão para compatibilidade */
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
-/* Estilo para o botão de deletar tarefa ('X') */
 .deleteTaskButton {
   position: absolute;
   top: 50%; 
@@ -83,25 +79,24 @@
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #666; /* Cor sutil */
+  color: #666;
   font-size: 1.2rem;
   font-weight: bold;
   line-height: 1;
   cursor: pointer;
-  padding: 2px 5px; /* Ajuste no padding */
+  padding: 2px 5px;
   border-radius: 4px;
-  opacity: 0; /* Escondido por padrão */
+  opacity: 0;
   transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
-/* Mostra o botão quando o mouse está sobre o card */
 .taskCard:hover .deleteTaskButton {
   opacity: 1;
 }
 
 .deleteTaskButton:hover {
-  color: #ff4d4d; /* Cor vermelha no hover */
-  background-color: rgba(255, 77, 77, 0.1); /* Fundo sutil vermelho */
+  color: #ff4d4d;
+  background-color: rgba(255, 77, 77, 0.1);
 }
 
 .statusBadge {
@@ -110,18 +105,19 @@
   font-size: 0.75rem;
   font-weight: 500;
   margin-top: 0.5rem;
-  width: fit-content; /* Faz o badge se ajustar ao texto */
+  width: fit-content;
 }
 
-/* Cores baseadas nos status da sua API */
 .pending {
   background-color: #4a4a4a;
   color: #e0e0e0;
 }
+
 .in_progress {
   background-color: #007bff;
   color: #ffffff;
 }
+
 .completed {
   background-color: #28a745;
   color: #ffffff;

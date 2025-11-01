@@ -1,5 +1,3 @@
-/* components/AddTaskForm/AddTaskForm.module.css */
-
 .formContainer {
   display: flex;
   flex-direction: column;
@@ -46,7 +44,7 @@
 
 .buttonGroup {
   display: flex;
-  justify-content: flex-end; /* Alinhar à direita */
+  justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1rem;
 }

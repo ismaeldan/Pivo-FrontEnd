@@ -2,29 +2,36 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { Column } from '@/types'; // Importe apenas o tipo Column
+import { Column } from '@/types';
 
-// 1. REMOVA a interface BoardResponse
-// interface BoardResponse { ... }
+export interface BoardFilters {
+  status?: string;
+  q?: string; 
+}
 
-// 2. Altere a função de fetch para esperar 'Column[]'
-const fetchBoard = async (): Promise<Column[]> => {
-  // Chamada de API (token adicionado automaticamente)
-  const response = await apiClient('/board'); 
+const fetchBoard = async (filters: BoardFilters): Promise<Column[]> => {
+  const params = new URLSearchParams();
+  if (filters.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+  if (filters.q) {
+    params.append('q', filters.q);
+  }
+  
+  const endpoint = `/columns?${params.toString()}`;
+
+  const response = await apiClient(endpoint);
   
   if (!response.ok) {
     throw new Error('Falha ao buscar os dados do board');
   }
   
-  // 3. Retorne o JSON diretamente (que deve ser o array)
   return response.json();
 };
 
-// Nosso custom hook
-export const useBoard = () => {
-  // 4. Altere o tipo genérico para Column[]
+export const useBoard = (filters: BoardFilters) => {
   return useQuery<Column[], Error>({
-    queryKey: ['board'], // A chave única para esta query
-    queryFn: fetchBoard, // A função que busca os dados
+    queryKey: ['board', filters], 
+    queryFn: () => fetchBoard(filters),
   });
 };

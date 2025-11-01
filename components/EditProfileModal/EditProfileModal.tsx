@@ -104,12 +104,11 @@ export default function EditProfileModal({
             className={styles.input}
             disabled={isPending}
             autoFocus
-            autoComplete="name" // Adiciona autocomplete para nome
+            autoComplete="name"
           />
           <div className={styles.errorMessage}></div>
         </div>
 
-        {/* Email */}
         <div className={styles.formGroup}>
           <label htmlFor="edit-email">Email</label>
           <input
@@ -119,12 +118,11 @@ export default function EditProfileModal({
             onChange={(e) => setEmail(e.target.value)}
             className={styles.input}
             disabled={isPending}
-            autoComplete="email" // Adiciona autocomplete para email
+            autoComplete="email"
           />
           <div className={styles.errorMessage}></div>
         </div>
-
-        {/* --- CAMPO DE SENHA ATUALIZADO --- */}
+        
         <div className={styles.formGroup}>
           <label htmlFor="edit-password">Nova Senha</label>
           <input
@@ -139,14 +137,13 @@ export default function EditProfileModal({
             `}
             placeholder="Mínimo 8 caracteres"
             disabled={isPending}
-            autoComplete="new-password" // <-- ESTA É A CORREÇÃO
+            autoComplete="new-password"
           />
           <div className={styles.errorMessage}>
             {password && passwordLengthState === 'invalid' ? 'A senha deve ter pelo menos 8 caracteres.' : ''}
           </div>
         </div>
-
-        {/* --- NOVO CAMPO DE CONFIRMAÇÃO ATUALIZADO --- */}
+        
         <div className={styles.formGroup}>
           <label htmlFor="edit-password-confirm">Confirmar Nova Senha</label>
           <input
@@ -161,7 +158,7 @@ export default function EditProfileModal({
             `}
             placeholder="Repita a senha"
             disabled={isPending || passwordLengthState !== 'valid'} 
-            autoComplete="new-password" // <-- ESTA É A CORREÇÃO
+            autoComplete="new-password"
           />
           <div className={styles.errorMessage}>
             {passwordMatchState === 'invalid' ? 'As senhas não conferem.' : ''}
