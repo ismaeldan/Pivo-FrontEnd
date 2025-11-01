@@ -1,73 +1,109 @@
 "use client";
 
 import styles from './Sidebar.module.css';
-import { useAuth } from '../AuthProvider'; // 1. Importar o hook de autenticação
+import { useAuth } from '../AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react'; // <-- 1. Importar useState
+import { useMutation, useQueryClient } from '@tanstack/react-query'; // <-- 2. Importar hooks
+import { apiClient } from '@/lib/apiClient'; // <-- 3. Importar apiClient
+import EditProfileModal, { EditProfileData } from '../EditProfileModal/EditProfileModal'; // <-- 4. Importar o novo Modal
+
+// 5. Função da API para (PATCH /users/me)
+const updateUserOnAPI = async (data: EditProfileData) => {
+  const response = await apiClient('/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Falha ao atualizar o perfil');
+  return response.json();
+};
+
 
 export default function Sidebar() {
-  // 2. Usar o hook para pegar os dados do usuário
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth(); // 'isLoading' para evitar flicker
   const router = useRouter();
-  const pathname = usePathname(); // Para saber qual link está ativo
+  const pathname = usePathname();
+  const queryClient = useQueryClient(); // <-- 6. Pegar o QueryClient
+
+  // 7. Estado para controlar o modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 8. Mutação para atualizar o perfil
+  const updateProfileMutation = useMutation({
+    mutationFn: updateUserOnAPI,
+    onSuccess: () => {
+      // 9. MUITO IMPORTANTE: Invalida o cache 'authMe'
+      //    Isso força o AuthProvider a buscar os dados de novo (com o novo nome)
+      queryClient.invalidateQueries({ queryKey: ['authMe'] });
+      setIsModalOpen(false); // Fecha o modal
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar perfil:", error);
+      alert("Não foi possível atualizar o perfil.");
+    }
+  });
 
   const handleLogout = () => {
-    // 3. Função de Logout
     localStorage.removeItem('access_token');
-    router.push('/'); // Redireciona para o login
+    queryClient.invalidateQueries({ queryKey: ['authMe'] }); // Limpa o cache
+    router.push('/');
   };
 
-  // Pega a primeira letra do nome para o Avatar
   const userInitials = user?.name ? user.name.charAt(0).toUpperCase() : '?';
 
   return (
-    // 4. Estrutura da Sidebar
-    <aside className={styles.sidebar}>
-      <div>
-        <div className={styles.logo}>Pivô</div>
-        <nav className={styles.nav}>
-          {/* Usamos o pathname para aplicar a classe 'navLinkActive'
-            Iremos usar a rota '/board' que criamos 
-          */}
-          <Link 
-            href="/board" 
-            className={`${styles.navLink} ${pathname === '/board' ? styles.navLinkActive : ''}`}
-          >
-            {/* (Ícone viria aqui) */}
-            Dashboard
-          </Link>
-          {/* Adicione mais links aqui se precisar (ex: /settings) */}
-        </nav>
-      </div>
+    <>
+      <aside className={styles.sidebar}>
+        <div>
+          <div className={styles.logo}>Pivô</div>
+          <nav className={styles.nav}>
+            <Link 
+              href="/board" 
+              className={`${styles.navLink} ${pathname === '/board' ? styles.navLinkActive : ''}`}
+            >
+              Dashboard
+            </Link>
+          </nav>
+        </div>
 
-      {/* 5. Seção de Perfil na parte de baixo */}
-      <div className={styles.profileSection}>
-        <div className={styles.profileInfo}>
-          <div className={styles.profileAvatar}>
-            {userInitials}
+        <div className={styles.profileSection}>
+          <div className={styles.profileInfo}>
+            <div className={styles.profileAvatar}>
+              {userInitials}
+            </div>
+            <span className={styles.profileName}>
+              {isLoading ? 'Carregando...' : (user ? user.name : 'Visitante')}
+            </span>
           </div>
-          {/* 6. Exibe o nome do usuário vindo do hook */}
-          <span className={styles.profileName}>
-            {user ? user.name : 'Carregando...'}
-          </span>
-        </div>
 
-        <div className={styles.profileActions}>
-          <button 
-            className={styles.actionButton} 
-            disabled 
-            title="Funcionalidade em breve"
-          >
-            Editar Perfil
-          </button>
+          <div className={styles.profileActions}>
+            {/* 10. Botão agora abre o modal */}
+            <button 
+              className={styles.actionButton} 
+              onClick={() => setIsModalOpen(true)} // <-- AÇÃO
+              disabled={isLoading || !user} // Desabilita se não estiver carregado
+              title="Editar seu perfil"
+            >
+              Editar Perfil
+            </button>
 
-          {/* 7. Botão de Logout com a função */}
-          <button onClick={handleLogout} className={styles.logoutButton}>
-            Sair
-          </button>
+            <button onClick={handleLogout} className={styles.logoutButton}>
+              Sair
+            </button>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* 11. Renderiza o Modal (ele só é visível se 'isModalOpen' for true) */}
+      <EditProfileModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        user={user}
+        onSave={(data) => updateProfileMutation.mutate(data)}
+        isPending={updateProfileMutation.isPending}
+      />
+    </>
   );
 }

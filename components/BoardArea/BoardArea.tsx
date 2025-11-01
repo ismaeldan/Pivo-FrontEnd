@@ -45,7 +45,7 @@ type ConfirmationModalData =
 interface CreateTaskPayload {
   title: string;
   columnId: string;
-  description?: string | null;
+  description?: string | null; 
   status?: string;
 }
 
@@ -57,13 +57,11 @@ interface UpdateTaskPayload {
     order?: number;
     columnId?: string;
     title?: string;
-    // --- ADICIONE OS NOVOS CAMPOS ---
     description?: string | null;
     status?: string;
   }
 }
 
-// (Nova) Payload para atualizar coluna
 interface UpdateColumnPayload {
   columnId: string;
   data: {
@@ -88,7 +86,6 @@ const createTaskOnAPI = async (payload: CreateTaskPayload): Promise<CreateTaskRe
 
 // PATCH /tasks/:taskId
 const updateTaskOnAPI = async ({ taskId, data }: UpdateTaskPayload) => {
-  // A interface UpdateTaskPayload já foi atualizada
   const response = await apiClient(`/tasks/${taskId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
@@ -97,7 +94,7 @@ const updateTaskOnAPI = async ({ taskId, data }: UpdateTaskPayload) => {
   return response.json();
 };
 
-// (NOVO) DELETE /tasks/:taskId
+// DELETE /tasks/:taskId
 const deleteTaskOnAPI = async (taskId: string) => {
   const response = await apiClient(`/tasks/${taskId}`, {
     method: 'DELETE',
@@ -108,7 +105,7 @@ const deleteTaskOnAPI = async (taskId: string) => {
   return { success: true };
 };
 
-// (NOVO) POST /columns
+// POST /columns
 const createColumnOnAPI = async (payload: { title: string }) => {
   const response = await apiClient('/columns', {
     method: 'POST',
@@ -118,7 +115,7 @@ const createColumnOnAPI = async (payload: { title: string }) => {
   return response.json();
 };
 
-// (NOVO) PATCH /columns/:columnId
+// PATCH /columns/:columnId
 const updateColumnTitleOnAPI = async ({ columnId, data }: UpdateColumnPayload) => {
   const response = await apiClient(`/columns/${columnId}`, {
     method: 'PATCH',
@@ -128,7 +125,7 @@ const updateColumnTitleOnAPI = async ({ columnId, data }: UpdateColumnPayload) =
   return response.json();
 };
 
-// (NOVO) DELETE /columns/:columnId
+// DELETE /columns/:columnId
 const deleteColumnOnAPI = async (columnId: string) => {
   const response = await apiClient(`/columns/${columnId}`, {
     method: 'DELETE',
@@ -146,73 +143,67 @@ export default function BoardArea() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
-  const [originalColumn, setOriginalColumn] = useState<ColumnType | null>(null); 
+  // Removido 'originalColumn' pois a nova lógica não precisa dele
   const [confirmationModalData, setConfirmationModalData] = useState<ConfirmationModalData>(null);
-  // O estado 'editingTask' já existe, ótimo!
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   
   const queryClient = useQueryClient();
 
   // --- Hooks do React Query ---
 
-  // Query para BUSCAR (GET /board)
   const { 
     data: columnsFromAPI, 
     isLoading: isLoadingBoard,
     isError: isErrorBoard 
   } = useBoard();
 
-  // Sincroniza a API com o estado local
   useEffect(() => {
     if (columnsFromAPI) {
       setColumns(columnsFromAPI); 
     }
   }, [columnsFromAPI]);
 
-  // Mutação para CRIAR TAREFA (POST /tasks)
   const createTaskMutation = useMutation({
     mutationFn: createTaskOnAPI,
     onError: (error) => console.error("Erro ao criar tarefa:", error),
   });
 
-  // Mutação para ATUALIZAR TAREFA (PATCH /tasks/:taskId) (Usada pelo DND e Edição)
   const updateTaskMutation = useMutation({
     mutationFn: updateTaskOnAPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['board'] });
-      // MODIFICAÇÃO: Fechar o modal de edição ao salvar
-      closeEditModal(); 
+      closeEditModal();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Erro ao atualizar tarefa:", error);
-      // Opcional: Adicionar um toast/alerta de erro aqui
-      queryClient.invalidateQueries({ queryKey: ['board'] }); // Reverte
+      // Exibe o alerta de erro
+      alert(`Erro ao mover/atualizar: ${error.message}. Revertendo.`);
+      // Força a reversão da UI otimista buscando os dados do servidor
+      queryClient.invalidateQueries({ queryKey: ['board'] }); 
     }
   });
 
-  // (NOVO) Mutação para CRIAR COLUNA (POST /columns)
   const createColumnMutation = useMutation({
     mutationFn: createColumnOnAPI,
-    onSuccess: () => {
+    onSuccess: (newColumnData) => {
+      // Adicionada lógica para lidar com criação de tarefas
       queryClient.invalidateQueries({ queryKey: ['board'] });
       closeModal();
     },
     onError: (error) => console.error("Erro ao criar coluna:", error),
   });
 
-  // (NOVO) Mutação para ATUALIZAR COLUNA (PATCH /columns/:columnId)
-  const updateColumnMutation = useMutation({ // 1. Nome mudou
-    mutationFn: updateColumnTitleOnAPI, // 2. Função da API mudou
+  const updateColumnMutation = useMutation({
+    mutationFn: updateColumnTitleOnAPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['board'] });
     },
     onError: (error) => {
       console.error("Erro ao atualizar coluna:", error);
-      queryClient.invalidateQueries({ queryKey: ['board'] }); // Reverte
+      queryClient.invalidateQueries({ queryKey: ['board'] }); 
     }
   });
 
-  // (NOVO) Mutação para DELETAR TAREFA (DELETE /tasks/:taskId)
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTaskOnAPI,
     onSuccess: () => {
@@ -224,7 +215,6 @@ export default function BoardArea() {
     }
   });
 
-  // (NOVO) Mutação para DELETAR COLUNA (DELETE /columns/:columnId)
   const deleteColumnMutation = useMutation({
     mutationFn: deleteColumnOnAPI,
     onSuccess: () => {
@@ -247,110 +237,67 @@ export default function BoardArea() {
 
   // --- FUNÇÕES DE CRUD (Conectadas às Mutações) ---
   
-  // (Conectada)
   function handleCreateColumn(title: string, taskContents: string[]) {
     const hasTasks = taskContents.length > 0;
 
-    // 1. Chamamos a mutação para criar a coluna
     createColumnMutation.mutate(
       { title: title },
       {
-        // 2. Sobrescrevemos o onSuccess SÓ PARA ESTA CHAMADA
         onSuccess: (newColumnData) => {
-          // newColumnData é o objeto retornado pela API (ex: { id: "...", title: "..." })
-          //
-          const newColumnId = newColumnData.id;
+          const newColumnId = (newColumnData as ColumnType).id;
 
-          // 3. Verificamos se é opcionalmente para criar tarefas
           if (hasTasks && newColumnId) {
-            
-            // Criamos um array de promessas
             const taskCreationPromises = taskContents.map(taskTitle => 
-              createTaskMutation.mutateAsync({ // Usamos mutateAsync
+              createTaskMutation.mutateAsync({ 
                 title: taskTitle,
+                description: null,
+                status: 'pending', 
                 columnId: newColumnId,
               })
             );
-
-            // 4. Esperamos todas as tarefas serem criadas
             Promise.all(taskCreationPromises)
-              .then(() => {
-                // 5. Só então invalidamos e fechamos
-                queryClient.invalidateQueries({ queryKey: ['board'] });
-                closeModal();
-              })
-              .catch((err) => {
-                console.error("Erro ao criar tarefas em lote:", err);
-                // A coluna foi criada, mas as tarefas falharam.
-                // Mesmo assim, atualizamos o board para mostrar a nova coluna.
+              .finally(() => { 
                 queryClient.invalidateQueries({ queryKey: ['board'] });
                 closeModal();
               });
-
           } else {
-            // 3b. Se não tinha tarefas, só invalida e fecha
             queryClient.invalidateQueries({ queryKey: ['board'] });
             closeModal();
           }
         },
         onError: (error) => {
-          // O onError definido na mutação já vai rodar,
-          // mas podemos adicionar algo específico aqui se quisermos
           console.error("Falha ao criar a coluna (etapa 1):", error);
-          // O modal não será fechado, o que é bom.
         }
       }
     );
   }
 
-  // (Conectada)
- function handleCreateTask(columnId: string, data: AddTaskData) {
+  function handleCreateTask(columnId: string, data: AddTaskData) {
     createTaskMutation.mutate({
       title: data.title,
       description: data.description,
       status: data.status,
       columnId: columnId,
     }, {
-      // Adicionamos a lógica de sucesso aqui, no local da chamada
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['board'] });
-        closeModal(); // Fecha o modal "Adicionar Nova Tarefa"
+        closeModal(); 
       }
     });
   }
 
-  // (Conectada)
-  // Esta função não é mais usada, mas vamos manter por enquanto.
-  // A nova handleUpdateTaskDetails faz o trabalho de edição.
-  function updateTaskTitle(taskId: string, newTitle: string) {
-    updateTaskMutation.mutate({
-      taskId: taskId,
-      data: { title: newTitle } // Envia o novo título para a API
-    });
-  }
-  
-  // (NOVA FUNÇÃO)
-  // Chamada quando o modal de edição é salvo
   function handleUpdateTaskDetails(data: EditTaskData) {
     if (!editingTask) return;
 
-    // Compara para enviar apenas o que mudou (otimização opcional)
     const { title, description, status, moveToTop } = data;
-    
-    // Otimização: Se nada mudou, apenas feche o modal
-    const changes: {
-      title: string;
-      description: string | null;
-      status: string;
-      order?: number; // O 'order' é opcional
-    } = {
-      title: title,
-      description: description,
-      status: status,
+    const changes: UpdateTaskPayload['data'] = {
+      title,
+      description,
+      status,
     };
 
     if (moveToTop) {
-      changes.order = 0; // Move para o topo
+      changes.order = 0; 
     }
     
     const dataHasChanged = 
@@ -358,21 +305,17 @@ export default function BoardArea() {
       changes.description !== (editingTask.description || null) ||
       changes.status !== editingTask.status;
 
-    // Se nem os dados mudaram E nem o 'moveToTop' foi marcado, não faz nada
     if (!dataHasChanged && !moveToTop) {
       closeEditModal();
       return;
     }
     
-    // 4. Chama a mutação existente com os novos dados
     updateTaskMutation.mutate({
       taskId: editingTask.id,
-      data: changes // 'data' agora pode conter { title, description, status, order }
+      data: changes
     });
   }
 
-
-  // (Conectada)
   function updateColumnTitle(columnId: string, newTitle: string) {
     updateColumnMutation.mutate({
       columnId: columnId,
@@ -380,23 +323,13 @@ export default function BoardArea() {
     });
   }
 
-  // (As funções 'deleteTask' e 'deleteColumn' não são mais necessárias aqui,
-  //  pois 'confirmDeletion' chama as mutações diretamente)
-
   
   // --- FUNÇÕES DO DND-KIT ---
-function handleDragStart(event: DragStartEvent) {
+  function handleDragStart(event: DragStartEvent) {
     const { active } = event;
-
-    // CORREÇÃO: 
-    // Adicionamos '&& active.data.current.task' e '&& active.data.current.column'
-    // para garantir que os dados existem antes de tentar acessá-los.
+    // CORREÇÃO: Adiciona verificação se 'task' ou 'column' existem
     if (active.data.current?.type === 'Task' && active.data.current.task) {
-      const task = active.data.current.task as Task;
-      setActiveTask(task);
-      setOriginalColumn(
-        columns.find(col => col.tasks.some(t => t.id === task.id)) || null
-      );
+      setActiveTask(active.data.current.task as Task);
       return;
     }
     if (active.data.current?.type === 'Column' && active.data.current.column) {
@@ -406,7 +339,7 @@ function handleDragStart(event: DragStartEvent) {
   }
 
   //
-  // --- SUBSTITUA TODA A FUNÇÃO handleDragEnd POR ESTA ---
+  // --- FUNÇÃO handleDragEnd TOTALMENTE CORRIGIDA ---
   //
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -414,6 +347,7 @@ function handleDragStart(event: DragStartEvent) {
     // 1. Limpa estados de "arrasto"
     setActiveTask(null);
     setActiveColumn(null);
+    // (originalColumn não é mais necessário)
 
     // 2. Condições de saída
     if (!over) return; // Soltou fora de uma zona válida
@@ -441,14 +375,15 @@ function handleDragStart(event: DragStartEvent) {
       return; // Finaliza a função
     }
 
+
     // --- LÓGICA DE ARRASTAR TAREFA ---
-    // - Corrigido 'possibly undefined'
+    // CORREÇÃO: Verifica se a task existe em active.data.current
     const isActiveTask = active.data.current?.type === 'Task';
     if (isActiveTask && active.data.current?.task) {
       
       const taskToMove = active.data.current.task as Task;
 
-      // A. Encontrar coluna de ORIGEM e índice
+      // A. Encontrar coluna de ORIGEM
       const activeColumn = columns.find(col => 
         col.tasks.some(task => task.id === active.id)
       );
@@ -457,28 +392,27 @@ function handleDragStart(event: DragStartEvent) {
 
 
       // B. Encontrar coluna de DESTINO e ÍNDICE
-      //    Esta é a correção principal para
+      //    Esta é a correção principal
       let targetColumnId: string;
       let targetIndex: number;
 
       // Cenário 1: Soltou sobre uma TAREFA
       if (over.data.current?.type === 'Task') {
-        // Encontra a coluna que CONTÉM a tarefa 'over'
         const overTaskColumn = columns.find(col => col.tasks.some(t => t.id === over.id));
         if (!overTaskColumn) return; // Failsafe
         
-        targetColumnId = overTaskColumn.id; // <-- Pega o ID da COLUNA
+        targetColumnId = overTaskColumn.id; // <-- ID da COLUNA da tarefa
         targetIndex = overTaskColumn.tasks.findIndex(t => t.id === over.id);
       } 
       // Cenário 2: Soltou sobre uma COLUNA
       else if (over.data.current?.type === 'Column') {
-        targetColumnId = over.id as string; // <-- O ID de 'over' É o ID da coluna
+        targetColumnId = over.id as string; // <-- ID da COLUNA
         const overColumn = columns.find(col => col.id === targetColumnId);
         if (!overColumn) return; // Failsafe
         
-        targetIndex = overColumn.tasks.length; // Adiciona ao final da coluna
+        targetIndex = overColumn.tasks.length; // Adiciona ao final
       } 
-      // Cenário 3: Alvo inválido (não deve acontecer)
+      // Cenário 3: Alvo inválido
       else {
         console.error("Alvo de drop desconhecido:", over);
         return;
@@ -489,19 +423,19 @@ function handleDragStart(event: DragStartEvent) {
         return;
       }
       
-      // D. Atualização Otimista (Visual) - SEPARAÇÃO DO SIDE-EFFECT
+      // D. Atualização Otimista (Visual)
       setColumns((prev) => {
         const prevActiveCol = prev.find(c => c.id === activeColumn.id);
         const prevTargetCol = prev.find(c => c.id === targetColumnId);
 
         if (!prevActiveCol || !prevTargetCol) return prev; // Failsafe
 
-        // Caso 1: Mesma coluna (Reordenação)
+        // Mesma coluna (Reordenação)
         if (prevActiveCol.id === prevTargetCol.id) {
           const newTasks = arrayMove(prevActiveCol.tasks, activeIndex, targetIndex);
           return prev.map(c => c.id === prevActiveCol.id ? {...c, tasks: newTasks} : c);
         } 
-        // Caso 2: Colunas diferentes (Movimentação)
+        // Colunas diferentes (Movimentação)
         else {
           const newActiveTasks = prevActiveCol.tasks.filter(t => t.id !== active.id);
           const newTargetTasks = [...prevTargetCol.tasks];
@@ -515,8 +449,8 @@ function handleDragStart(event: DragStartEvent) {
         }
       });
 
-      // E. Chamada de API (Backend) - AGORA DO LADO DE FORA
-      //    'targetColumnId' é garantido ser um UUID de coluna, corrigindo o erro.
+      // E. Chamada de API (Backend)
+      //    Agora 'targetColumnId' é garantido ser um UUID de coluna.
       updateTaskMutation.mutate({
           taskId: active.id as string,
           data: {
@@ -533,13 +467,11 @@ function handleDragStart(event: DragStartEvent) {
   const openAddTaskModal = (columnId: string) => setActiveModal({ type: 'addTask', columnId });
   const closeModal = () => setActiveModal(null);
 
-  // Esta função já existe e está correta
   const openEditModal = (task: Task) => {
-    setEditingTask(task); // Define a tarefa que o modal deve editar
+    setEditingTask(task);
   };
-  // Esta função já existe e está correta
   const closeEditModal = () => {
-    setEditingTask(null); // Limpa a tarefa
+    setEditingTask(null);
   };
   
   const requestDeleteTask = (task: Task) => {
@@ -552,7 +484,6 @@ function handleDragStart(event: DragStartEvent) {
     setConfirmationModalData(null);
   };
   
-  // (Conectado às mutações)
   const confirmDeletion = () => {
     if (!confirmationModalData) return; 
 
@@ -581,8 +512,23 @@ function handleDragStart(event: DragStartEvent) {
       onDragEnd={handleDragEnd}
     >
       <div className={styles.boardContainer}>
-        <h1 className={styles.boardTitle}>Meu Board</h1>
         
+        {/* Header do Board */}
+        <div className={styles.boardHeader}>
+          <h1 className={styles.boardTitle}>Board</h1>
+          
+          <div className={styles.boardControls}>
+            {/* TODO: Adicionar SearchBar e Filtros aqui */}
+            <button 
+              onClick={openAddColumnModal} 
+              className={styles.primaryButton}
+            >
+              + Adicionar Coluna
+            </button>
+          </div>
+        </div>
+        
+        {/* Contêiner das Colunas */}
         <div className={styles.columnsWrapper}>
           <SortableContext 
             items={columnIds} 
@@ -594,20 +540,13 @@ function handleDragStart(event: DragStartEvent) {
                 column={column} 
                 activeTask={activeTask} 
                 onAddTask={openAddTaskModal} 
-                onOpenEditModal={openEditModal} // Conectado
-                onUpdateColumnTitle={updateColumnTitle} // Conectado
-                onRequestDeleteTask={requestDeleteTask} // Conectado
-                onRequestDeleteColumn={requestDeleteColumn} // Conectado
+                onOpenEditModal={openEditModal} 
+                onUpdateColumnTitle={updateColumnTitle} 
+                onRequestDeleteTask={requestDeleteTask} 
+                onRequestDeleteColumn={requestDeleteColumn} 
               />
             ))}
           </SortableContext>
-
-          <button 
-            onClick={openAddColumnModal} 
-            className={styles.addNewColumnButton}
-          >
-            + Adicionar Coluna
-          </button>
         </div>
       </div>
 
@@ -632,6 +571,7 @@ function handleDragStart(event: DragStartEvent) {
         )}
       </DragOverlay>
 
+      {/* Modal de Adicionar Coluna/Tarefa */}
       <Modal 
         isOpen={!!activeModal} 
         onClose={closeModal}
@@ -645,7 +585,7 @@ function handleDragStart(event: DragStartEvent) {
           <AddColumnForm 
             onSave={handleCreateColumn}
             onCancel={closeModal}
-            isPending={createColumnMutation.isPending} // Passa o loading
+            isPending={createColumnMutation.isPending} 
           />
         )}
         {activeModal?.type === 'addTask' && (
@@ -657,6 +597,7 @@ function handleDragStart(event: DragStartEvent) {
         )}
       </Modal>
 
+      {/* Modal de Confirmação de Exclusão */}
       <Modal
         isOpen={!!confirmationModalData}
         onClose={cancelDeletion}
@@ -668,16 +609,16 @@ function handleDragStart(event: DragStartEvent) {
               Tem certeza que deseja excluir 
               <strong> "{confirmationModalData.name}"</strong>?
             </p>
+            {/* CORREÇÃO: Trocado </a> por </p> */}
             {confirmationModalData.type === 'column' && (
               <p className={styles.warningText}>
                 (Todas as tarefas dentro desta coluna também serão excluídas!)
-              </p>
+              </p> 
             )}
             <div className={styles.confirmationButtons}>
               <button 
                 onClick={cancelDeletion} 
                 className={styles.cancelButton}
-                // Desabilita se qualquer deleção estiver ocorrendo
                 disabled={deleteTaskMutation.isPending || deleteColumnMutation.isPending}
               >
                 Cancelar
@@ -685,10 +626,8 @@ function handleDragStart(event: DragStartEvent) {
               <button 
                 onClick={confirmDeletion} 
                 className={styles.confirmDeleteButton}
-                // Desabilita se qualquer deleção estiver ocorrendo
                 disabled={deleteTaskMutation.isPending || deleteColumnMutation.isPending}
               >
-                {/* Mostra o texto de loading correto */}
                 {(deleteTaskMutation.isPending || deleteColumnMutation.isPending) 
                   ? 'Excluindo...' 
                   : 'Excluir'}
@@ -698,7 +637,7 @@ function handleDragStart(event: DragStartEvent) {
         )}
       </Modal>
 
-      {/* --- NOSSO NOVO MODAL DE EDIÇÃO --- */}
+      {/* Modal de Editar Tarefa */}
       {editingTask && (
         <EditTaskModal
           isOpen={!!editingTask}
@@ -708,7 +647,6 @@ function handleDragStart(event: DragStartEvent) {
           isPending={updateTaskMutation.isPending}
         />
       )}
-      {/* --- FIM DO NOVO MODAL --- */}
 
     </DndContext>
   );

@@ -112,3 +112,25 @@
   cursor: pointer;
   user-select: none; /* Evita selecionar o texto */
 }
+
+.formGroup {
+  /* Adicionado para que a mensagem de erro não aumente o gap */
+  margin-bottom: -0.5rem; 
+}
+
+.inputError {
+  border-color: #ff4d4d !important; /* Borda vermelha */
+  box-shadow: 0 0 0 2px rgba(255, 77, 77, 0.3); /* Sombra vermelha */
+}
+
+.inputValid {
+  border-color: #28a745 !important; /* Borda verde */
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.3); /* Sombra verde (Req. 7) */
+}
+
+.errorMessage {
+  color: #ff4d4d;
+  font-size: 0.8rem;
+  padding-top: 0.25rem;
+  height: 1.2rem; /* Reserva espaço para não "pular" */
+}
