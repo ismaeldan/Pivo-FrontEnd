@@ -7,6 +7,8 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation'; 
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3100';
+
 interface CreateUserPayload {
   name: string;
   email: string;
@@ -14,9 +16,8 @@ interface CreateUserPayload {
 }
 
 async function createUser(credentials: CreateUserPayload): Promise<any> {
-  const API_URL = 'http://localhost:3100/users'; 
 
-  const response = await fetch(API_URL, { 
+  const response = await fetch(`${API_URL}/users`, { 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

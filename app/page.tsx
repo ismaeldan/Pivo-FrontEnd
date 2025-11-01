@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation'; 
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3100';
+
 interface LoginCredentials {
   email: string;
   password: string;
@@ -17,9 +19,8 @@ interface LoginResponse {
 }
 
 async function loginUser(credentials: LoginCredentials): Promise<LoginResponse> {
-  const API_URL = 'http://localhost:3100/auth/login';
 
-  const response = await fetch(API_URL, { 
+  const response = await fetch(`${API_URL}/auth/login`, { 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
